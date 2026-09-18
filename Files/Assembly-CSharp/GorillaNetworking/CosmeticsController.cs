@@ -1159,6 +1159,8 @@ public class CosmeticsController : MonoBehaviour, IGorillaSliceableSimple, IBuil
 
 	private const string mothershipRewardsGrantedKey = "mshipRewardsGranted";
 
+	private const string gtfcBundleGrantedKey = "gtfcBundleGranted";
+
 	public string BundleSkuName = "2024_i_lava_you_pack";
 
 	public string BundlePlayfabItemName = "LSABG.";
@@ -2404,13 +2406,19 @@ public class CosmeticsController : MonoBehaviour, IGorillaSliceableSimple, IBuil
 			code = bundleToPurchase.nexusCreatorCode.Code;
 			groups = new NexusGroupId[1] { bundleToPurchase.nexusCreatorCode.GroupId };
 		}
+		BundleData bundleData = ((SubscriptionManager.IsLocalSubscribed() && bundleList.TryGetBundle(bundleToPurchase.playfabBundleID, out var bundle)) ? bundle : default(BundleData));
+		string text = (bundleData.playFabItemNameGTFC.IsNullOrEmpty() ? bundleToPurchase.playfabBundleID : bundleData.playFabItemNameGTFC);
+		if (bundleData.skuNameGTFC.IsNullOrEmpty())
+		{
+			_ = bundleToPurchase.bundleSKU;
+		}
 		if (code.IsNullOrEmpty())
 		{
-			itemToPurchase = bundleToPurchase.playfabBundleID;
+			itemToPurchase = text;
 			SteamPurchase();
 			return;
 		}
-		itemToPurchase = bundleToPurchase.playfabBundleID;
+		itemToPurchase = text;
 		NexusManager.MemberCode memberCode = await CreatorCodes.CheckValidationCoroutineJIT(ccp.TerminalId, code, groups);
 		if (memberCode != null)
 		{
@@ -2602,7 +2610,7 @@ public class CosmeticsController : MonoBehaviour, IGorillaSliceableSimple, IBuil
 		});
 	}
 
-	private void UnlockItem(string itemIdToUnlock, bool relock = false)
+	public void UnlockItem(string itemIdToUnlock, bool relock = false)
 	{
 		int num = allCosmetics.FindIndex((CosmeticItem x) => itemIdToUnlock == x.itemName);
 		if (num <= -1)
@@ -3164,6 +3172,11 @@ public class CosmeticsController : MonoBehaviour, IGorillaSliceableSimple, IBuil
 		GetCosmeticsPlayFabCatalogDataInternal();
 	}
 
+	internal bool TryGetBundleMapping(string idOrSku, out BundleData bundleMapping)
+	{
+		return bundleList.TryGetBundle(idOrSku, out bundleMapping);
+	}
+
 	private void ReconcileBundleRewardsIfNeeded(List<ItemInstance> inventory)
 	{
 		if (inventory != null && bundleList.IsLoaded)
@@ -3171,7 +3184,15 @@ public class CosmeticsController : MonoBehaviour, IGorillaSliceableSimple, IBuil
 			bool flag = false;
 			foreach (ItemInstance item in inventory)
 			{
-				if (bundleList.HasMothershipRewards(item.ItemId) && (item.CustomData == null || !item.CustomData.ContainsKey("mshipRewardsGranted")))
+				if (bundleList.TryGetBundle(item.ItemId, out var bundle) && bundle.playFabItemNameGTFC == item.ItemId)
+				{
+					if (item.CustomData == null || !item.CustomData.ContainsKey("gtfcBundleGranted"))
+					{
+						flag = true;
+						break;
+					}
+				}
+				else if (bundleList.HasMothershipRewards(item.ItemId) && (item.CustomData == null || !item.CustomData.ContainsKey("mshipRewardsGranted")))
 				{
 					flag = true;
 					break;
@@ -3187,9 +3208,13 @@ public class CosmeticsController : MonoBehaviour, IGorillaSliceableSimple, IBuil
 			Debug.LogWarning("ReconcileBundleRewards skipped: GorillaServer.Instance is null");
 			return;
 		}
-		GorillaServer.Instance.ReconcileBundleRewards(delegate(string result)
+		GorillaServer.Instance.ReconcileBundleRewards(delegate(GorillaServer.ReconcileBundleRewardsResponse response)
 		{
-			Debug.Log("ReconcileBundleRewards success: " + result);
+			if (response.grantedBundles.Count > 0)
+			{
+				Debug.Log("ReconcileBundleRewards granted: " + string.Join(", ", response.grantedBundles));
+				GetCosmeticsPlayFabCatalogData();
+			}
 		}, delegate(string error)
 		{
 			Debug.LogWarning("ReconcileBundleRewards failed: " + error);
@@ -3322,6 +3347,14 @@ public class CosmeticsController : MonoBehaviour, IGorillaSliceableSimple, IBuil
 								{
 									BundleManager.instance.storeBundlesById[key].TryUpdatePrice();
 								}
+								if (bundleList.TryGetBundle(bundleData.playfabBundleID, out var bundleMapping) && !bundleMapping.playFabItemNameGTFC.IsNullOrEmpty())
+								{
+									int num4 = catalogItems.FindIndex((CatalogItem ci) => ci.ItemId == bundleMapping.playFabItemNameGTFC);
+									if (num4 > -1 && catalogItems[num4].VirtualCurrencyPrices.TryGetValue("RM", out var value3))
+									{
+										BundleManager.instance.storeBundlesById[key].TryUpdateGtfcPrice(value3);
+									}
+								}
 							}
 						}
 					}
@@ -3344,9 +3377,9 @@ public class CosmeticsController : MonoBehaviour, IGorillaSliceableSimple, IBuil
 								CosmeticSO[] setCosmetics = m_earlyAccessSupporterPackCosmeticSO.info.setCosmetics;
 								foreach (CosmeticSO cosmeticSO in setCosmetics)
 								{
-									if (allCosmeticsDict.TryGetValue(cosmeticSO.info.playFabID, out var value3))
+									if (allCosmeticsDict.TryGetValue(cosmeticSO.info.playFabID, out var value4))
 									{
-										unlockedCosmetics.Add(value3);
+										unlockedCosmetics.Add(value4);
 									}
 								}
 							}
@@ -3419,7 +3452,7 @@ public class CosmeticsController : MonoBehaviour, IGorillaSliceableSimple, IBuil
 					}
 					BuilderSetManager.instance.OnGotInventoryItems(result, getCatalogItemsResult);
 					currencyBalance = result.VirtualCurrency[currencyName];
-					playedInBeta = result.VirtualCurrency.TryGetValue("TC", out var value4) && value4 > 0;
+					playedInBeta = result.VirtualCurrency.TryGetValue("TC", out var value5) && value5 > 0;
 					OnGetCurrency?.Invoke();
 					BundleManager.instance.CheckIfBundlesOwned();
 					StoreUpdater.instance.Initialize();
