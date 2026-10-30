@@ -1,14 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
-using Fusion;
 using Photon.Pun;
 using TMPro;
 using UnityEngine;
 
 namespace Voxels;
 
-[NetworkBehaviourWeaved(0)]
 public class VoxelScoreBoard : NetworkComponent
 {
 	[Serializable]
@@ -134,14 +132,6 @@ public class VoxelScoreBoard : NetworkComponent
 		}
 	}
 
-	public override void WriteDataFusion()
-	{
-	}
-
-	public override void ReadDataFusion()
-	{
-	}
-
 	protected override void WriteDataPUN(PhotonStream stream, PhotonMessageInfo info)
 	{
 		stream.SendNext(_entries.Count);
@@ -195,7 +185,6 @@ public class VoxelScoreBoard : NetworkComponent
 
 	private new void OnEnable()
 	{
-		NetworkBehaviourUtils.InternalOnEnable(this);
 		VoxelEvents.OnResourcesMinedAuthority += OnResourcesMined;
 		RoomSystem.JoinedRoomEvent += new Action(OnJoinedRoom);
 		RoomSystem.LeftRoomEvent += new Action(OnLeftRoom);
@@ -205,7 +194,6 @@ public class VoxelScoreBoard : NetworkComponent
 
 	private new void OnDisable()
 	{
-		NetworkBehaviourUtils.InternalOnDisable(this);
 		VoxelEvents.OnResourcesMinedAuthority -= OnResourcesMined;
 		RoomSystem.JoinedRoomEvent -= new Action(OnJoinedRoom);
 		RoomSystem.LeftRoomEvent -= new Action(OnLeftRoom);
@@ -289,17 +277,5 @@ public class VoxelScoreBoard : NetworkComponent
 			_entries[scoreLine] = value;
 			UpdateDisplay();
 		}
-	}
-
-	[WeaverGenerated]
-	public override void CopyBackingFieldsToState(bool P_0)
-	{
-		base.CopyBackingFieldsToState(P_0);
-	}
-
-	[WeaverGenerated]
-	public override void CopyStateToBackingFields()
-	{
-		base.CopyStateToBackingFields();
 	}
 }

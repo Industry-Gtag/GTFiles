@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using TMPro;
 using UnityEngine;
 
+[AddComponentMenu("GorillaTag/KID/KID Age Gate")]
 public class KIDAgeGate : MonoBehaviour
 {
 	private const string LEARN_MORE_URL = "https://whyagegate.com/";
@@ -59,8 +60,6 @@ public class KIDAgeGate : MonoBehaviour
 
 	private static bool _hasChosenAge;
 
-	private bool _metrics_LearnMorePressed;
-
 	public static int UserAge => _ageValue;
 
 	public static bool DisplayedScreen { get; private set; }
@@ -76,10 +75,6 @@ public class KIDAgeGate : MonoBehaviour
 		{
 			_activeReference = this;
 		}
-	}
-
-	private async void Start()
-	{
 	}
 
 	private void OnDestroy()
@@ -314,7 +309,6 @@ public class KIDAgeGate : MonoBehaviour
 
 	public void OnLearnMoreAboutKIDPressed()
 	{
-		_metrics_LearnMorePressed = true;
 		TelemetryData telemetryData = new TelemetryData
 		{
 			EventName = "kid_screen_shown",

@@ -1,6 +1,4 @@
 using System;
-using System.Runtime.InteropServices;
-using Fusion;
 using GorillaExtensions;
 using GorillaTag;
 using Liv.Lck.Cosmetics;
@@ -8,7 +6,6 @@ using Liv.Lck.GorillaTag;
 using Photon.Pun;
 using UnityEngine;
 
-[NetworkBehaviourWeaved(1)]
 public class LckSocialCamera : NetworkComponent, IGorillaSliceableSimple
 {
 	private enum CameraState
@@ -23,14 +20,6 @@ public class LckSocialCamera : NetworkComponent, IGorillaSliceableSimple
 	{
 		Cococam,
 		Tablet
-	}
-
-	[StructLayout(LayoutKind.Explicit, Size = 4)]
-	[NetworkStructWeaved(1)]
-	private struct CameraData(CameraState state) : INetworkStruct
-	{
-		[FieldOffset(0)]
-		public CameraState currentState = state;
 	}
 
 	[SerializeField]
@@ -57,25 +46,6 @@ public class LckSocialCamera : NetworkComponent, IGorillaSliceableSimple
 	private CameraState _localOwnedState;
 
 	private CameraState _networkOwnedState;
-
-	[WeaverGenerated]
-	[DefaultForProperty("_networkedData", 0, 1)]
-	[DrawIf("IsEditorWritable", true, CompareOperator.Equal, DrawIfMode.ReadOnly)]
-	private CameraData __networkedData;
-
-	[Networked]
-	[NetworkedWeaved(0, 1)]
-	private unsafe ref CameraData _networkedData
-	{
-		get
-		{
-			if (((NetworkBehaviour)this).Ptr == null)
-			{
-				throw new InvalidOperationException("Error when accessing LckSocialCamera._networkedData. Networked properties can only be accessed when Spawned() has been called.");
-			}
-			return ref *(CameraData*)((byte*)((NetworkBehaviour)this).Ptr + 0);
-		}
-	}
 
 	public VRRig VrRig => _vrrig;
 
@@ -134,25 +104,6 @@ public class LckSocialCamera : NetworkComponent, IGorillaSliceableSimple
 			visible = false;
 			recording = false;
 			IsOnNeck = false;
-		}
-		else if (base.Runner != null)
-		{
-			CameraState currentState = _networkedData.currentState;
-			ApplyVisualState(currentState);
-			_networkOwnedState = currentState;
-		}
-	}
-
-	public override void WriteDataFusion()
-	{
-		_networkedData = new CameraData(_localOwnedState);
-	}
-
-	public override void ReadDataFusion()
-	{
-		if (!m_isCorrupted)
-		{
-			ReadDataShared(_networkedData.currentState);
 		}
 	}
 
@@ -242,7 +193,6 @@ public class LckSocialCamera : NetworkComponent, IGorillaSliceableSimple
 
 	private void OnDestroy()
 	{
-		NetworkBehaviourUtils.InternalOnDestroy(this);
 		if (m_lckDelegateRegistered)
 		{
 			LckSocialCameraManager.OnManagerSpawned = (Action<LckSocialCameraManager>)Delegate.Remove(LckSocialCameraManager.OnManagerSpawned, new Action<LckSocialCameraManager>(OnManagerSpawned));
@@ -314,16 +264,14 @@ public class LckSocialCamera : NetworkComponent, IGorillaSliceableSimple
 		}
 	}
 
-	public new void OnEnable()
+	internal override void OnEnable()
 	{
-		NetworkBehaviourUtils.InternalOnEnable(this);
 		base.OnEnable();
 		GorillaSlicerSimpleManager.RegisterSliceable(this, GorillaSlicerSimpleManager.UpdateStep.Update);
 	}
 
-	public new void OnDisable()
+	internal override void OnDisable()
 	{
-		NetworkBehaviourUtils.InternalOnDisable(this);
 		base.OnDisable();
 		GorillaSlicerSimpleManager.UnregisterSliceable(this, GorillaSlicerSimpleManager.UpdateStep.Update);
 		if (!m_isCorrupted)
@@ -356,19 +304,5 @@ public class LckSocialCamera : NetworkComponent, IGorillaSliceableSimple
 	{
 		m_isCorrupted = true;
 		base.gameObject.SetActive(value: false);
-	}
-
-	[WeaverGenerated]
-	public override void CopyBackingFieldsToState(bool P_0)
-	{
-		base.CopyBackingFieldsToState(P_0);
-		_networkedData = __networkedData;
-	}
-
-	[WeaverGenerated]
-	public override void CopyStateToBackingFields()
-	{
-		base.CopyStateToBackingFields();
-		__networkedData = _networkedData;
 	}
 }

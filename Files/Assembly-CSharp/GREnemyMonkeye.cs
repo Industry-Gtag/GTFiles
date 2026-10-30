@@ -7,6 +7,7 @@ using UnityEngine;
 using UnityEngine.AI;
 using UnityEngine.Serialization;
 
+[AddComponentMenu("GorillaTag/Ghost Reactor/GR Enemy Monkeye")]
 public class GREnemyMonkeye : MonoBehaviour, IGameEntityComponent, IGameEntitySerialize, IGameHittable, IGameAgentComponent, IGameEntityDebugComponent
 {
 	public enum Behavior
@@ -456,7 +457,7 @@ public class GREnemyMonkeye : MonoBehaviour, IGameEntityComponent, IGameEntitySe
 		VRRigCache.Instance.GetAllUsedRigs(tempRigs);
 		senseNearby.UpdateNearby(tempRigs, senseLineOfSight);
 		VRRig vRRig = senseNearby.PickClosest(out var _);
-		agent.RequestTarget((vRRig == null) ? null : vRRig.OwningNetPlayer);
+		agent.RequestTarget((vRRig == null) ? null : vRRig.Creator);
 		switch (currBehavior)
 		{
 		case Behavior.Idle:

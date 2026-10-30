@@ -6,6 +6,7 @@ using Unity.XR.CoreUtils;
 using UnityEngine;
 using UnityEngine.AI;
 
+[AddComponentMenu("GorillaTag/Ghost Reactor/GR Enemy Pest")]
 public class GREnemyPest : MonoBehaviour, IGameEntityComponent, IGameEntitySerialize, IGameHittable, IGameAgentComponent, IGameEntityDebugComponent, ITickSystemTick
 {
 	public enum Behavior
@@ -360,7 +361,7 @@ public class GREnemyPest : MonoBehaviour, IGameEntityComponent, IGameEntitySeria
 		VRRigCache.Instance.GetAllUsedRigs(tempRigs);
 		senseNearby.UpdateNearby(tempRigs, senseLineOfSight);
 		VRRig vRRig = senseNearby.PickClosest(out var _);
-		agent.RequestTarget((vRRig == null) ? null : vRRig.OwningNetPlayer);
+		agent.RequestTarget((vRRig == null) ? null : vRRig.Creator);
 		switch (currBehavior)
 		{
 		case Behavior.Idle:

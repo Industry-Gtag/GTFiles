@@ -148,7 +148,7 @@ public class TakeMyHand_HandLink : HoldableObject, IGorillaSliceableSimple
 			if (flag)
 			{
 				Vector3 averageVelocity = GTPlayer.Instance.GetHandVelocityTracker(takeMyHand_HandLink.isLeftHand).GetAverageVelocity(worldSpace: true);
-				myRig.netView.SendRPC("DroppedByPlayer", myRig.OwningNetPlayer, averageVelocity);
+				myRig.netView.SendRPC("DroppedByPlayer", myRig.Creator, averageVelocity);
 				myRig.ApplyLocalTrajectoryOverride(averageVelocity);
 			}
 			takeMyHand_HandLink.BreakLink();
@@ -217,7 +217,7 @@ public class TakeMyHand_HandLink : HoldableObject, IGorillaSliceableSimple
 		IsTentacleGrab = true;
 		grabbedLink = remoteLink;
 		grabbedLink.TentacleOffset = Vector3.zero;
-		grabbedPlayer = remoteLink.myRig.OwningNetPlayer;
+		grabbedPlayer = remoteLink.myRig.Creator;
 		grabbedHandIsLeft = remoteLink.isLeftHand;
 		OnHandLinkChanged?.Invoke();
 		return true;
@@ -235,7 +235,7 @@ public class TakeMyHand_HandLink : HoldableObject, IGorillaSliceableSimple
 		{
 			EquipmentInteractor.instance.UpdateHandEquipment(remoteLink, isLeftHand);
 			grabbedLink = remoteLink;
-			grabbedPlayer = remoteLink.myRig.OwningNetPlayer;
+			grabbedPlayer = remoteLink.myRig.Creator;
 			grabbedHandIsLeft = remoteLink.isLeftHand;
 			TentacleOffset = Vector3.zero;
 			if (remoteLink.IsTentacleGrab)
@@ -432,7 +432,7 @@ public class TakeMyHand_HandLink : HoldableObject, IGorillaSliceableSimple
 						OnHandLinkChanged?.Invoke();
 					}
 				}
-				else if (player == myRig.OwningNetPlayer)
+				else if (player == myRig.Creator)
 				{
 					bool num3 = grabbedPlayer != null;
 					grabbedPlayer = null;
@@ -502,7 +502,7 @@ public class TakeMyHand_HandLink : HoldableObject, IGorillaSliceableSimple
 		int num = 1;
 		HandLinkAuthorityStatus handLinkAuthorityStatus = new HandLinkAuthorityStatus(HandLinkAuthorityType.None, -1f, -1);
 		stepsToAuth = -1;
-		while (takeMyHand_HandLink != null && num < 10 && !takeMyHand_HandLink.IsLocal)
+		while (takeMyHand_HandLink != null && num < 10 && !takeMyHand_HandLink.IsLocal && takeMyHand_HandLink.myRig.Creator != null)
 		{
 			if (takeMyHand_HandLink.isGroundedHand)
 			{
@@ -512,7 +512,7 @@ public class TakeMyHand_HandLink : HoldableObject, IGorillaSliceableSimple
 			if (handLinkAuthorityStatus.type < HandLinkAuthorityType.ResidualHandGrounded && (double)(takeMyHand_HandLink.myRig.LastHandTouchedGroundAtNetworkTime + 1f) > PhotonNetwork.Time)
 			{
 				stepsToAuth = num;
-				handLinkAuthorityStatus = new HandLinkAuthorityStatus(HandLinkAuthorityType.ResidualHandGrounded, takeMyHand_HandLink.myRig.LastHandTouchedGroundAtNetworkTime, takeMyHand_HandLink.myRig.OwningNetPlayer.ActorNumber);
+				handLinkAuthorityStatus = new HandLinkAuthorityStatus(HandLinkAuthorityType.ResidualHandGrounded, takeMyHand_HandLink.myRig.LastHandTouchedGroundAtNetworkTime, takeMyHand_HandLink.myRig.Creator.ActorNumber);
 			}
 			else if (handLinkAuthorityStatus.type < HandLinkAuthorityType.ButtGrounded && takeMyHand_HandLink.isGroundedButt)
 			{
@@ -521,7 +521,7 @@ public class TakeMyHand_HandLink : HoldableObject, IGorillaSliceableSimple
 			}
 			else if (handLinkAuthorityStatus.type == HandLinkAuthorityType.None)
 			{
-				HandLinkAuthorityStatus handLinkAuthorityStatus2 = new HandLinkAuthorityStatus(HandLinkAuthorityType.None, takeMyHand_HandLink.myRig.LastTouchedGroundAtNetworkTime, takeMyHand_HandLink.myRig.OwningNetPlayer.ActorNumber);
+				HandLinkAuthorityStatus handLinkAuthorityStatus2 = new HandLinkAuthorityStatus(HandLinkAuthorityType.None, takeMyHand_HandLink.myRig.LastTouchedGroundAtNetworkTime, takeMyHand_HandLink.myRig.Creator.ActorNumber);
 				if (handLinkAuthorityStatus2 > handLinkAuthorityStatus)
 				{
 					stepsToAuth = num;

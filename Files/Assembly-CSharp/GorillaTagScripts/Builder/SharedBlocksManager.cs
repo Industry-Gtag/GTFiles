@@ -288,8 +288,6 @@ public class SharedBlocksManager : MonoBehaviour
 
 	public event Action<int, bool> OnFetchPrivateScanComplete;
 
-	public event Action<bool, SharedBlocksMap> OnFoundDefaultSharedBlocksMap;
-
 	public event Action<bool> OnGetPopularMapsComplete;
 
 	public static event Action OnRecentMapIdsUpdated;
@@ -559,7 +557,7 @@ public class SharedBlocksManager : MonoBehaviour
 
 	private IEnumerator PostVote(VoteRequest data, Action<bool, string> callback)
 	{
-		UnityWebRequest request = new UnityWebRequest(serializationConfig.sharedBlocksApiBaseURL + "/api/MapVote", "POST");
+		UnityWebRequest request = new UnityWebRequest(BackendApiUrl.Build(serializationConfig.sharedBlocksApiBaseURL, "/api/MapVote"), "POST");
 		byte[] bytes = Encoding.UTF8.GetBytes(JsonUtility.ToJson(data));
 		bool retry = false;
 		request.uploadHandler = new UploadHandlerRaw(bytes);
@@ -732,7 +730,7 @@ public class SharedBlocksManager : MonoBehaviour
 
 	private IEnumerator PostPublishMapRequest(PublishMapRequestData data, PublishMapRequestCallback callback)
 	{
-		UnityWebRequest request = new UnityWebRequest(serializationConfig.sharedBlocksApiBaseURL + "/api/Publish", "POST");
+		UnityWebRequest request = new UnityWebRequest(BackendApiUrl.Build(serializationConfig.sharedBlocksApiBaseURL, "/api/Publish"), "POST");
 		byte[] bytes = Encoding.UTF8.GetBytes(JsonUtility.ToJson(data));
 		bool retry = false;
 		request.uploadHandler = new UploadHandlerRaw(bytes);
@@ -840,7 +838,7 @@ public class SharedBlocksManager : MonoBehaviour
 
 	private IEnumerator GetMapDataFromID(GetMapDataFromIDRequest data, BlocksMapRequestCallback callback)
 	{
-		UnityWebRequest request = new UnityWebRequest(serializationConfig.sharedBlocksApiBaseURL + "/api/GetMapData", "POST");
+		UnityWebRequest request = new UnityWebRequest(BackendApiUrl.Build(serializationConfig.sharedBlocksApiBaseURL, "/api/GetMapData"), "POST");
 		byte[] bytes = Encoding.UTF8.GetBytes(JsonUtility.ToJson(data));
 		bool retry = false;
 		request.uploadHandler = new UploadHandlerRaw(bytes);
@@ -954,7 +952,7 @@ public class SharedBlocksManager : MonoBehaviour
 
 	private IEnumerator GetTopMaps(GetMapsRequest data, Action<List<SharedBlocksMapMetaData>> callback)
 	{
-		UnityWebRequest request = new UnityWebRequest(serializationConfig.sharedBlocksApiBaseURL + "/api/GetMaps", "POST");
+		UnityWebRequest request = new UnityWebRequest(BackendApiUrl.Build(serializationConfig.sharedBlocksApiBaseURL, "/api/GetMaps"), "POST");
 		byte[] bytes = Encoding.UTF8.GetBytes(JsonUtility.ToJson(data));
 		bool retry = false;
 		request.uploadHandler = new UploadHandlerRaw(bytes);
@@ -1096,7 +1094,7 @@ public class SharedBlocksManager : MonoBehaviour
 
 	private IEnumerator PostUpdateMapActive(UpdateMapActiveRequest data, Action<bool> callback)
 	{
-		UnityWebRequest request = new UnityWebRequest(serializationConfig.sharedBlocksApiBaseURL + "/api/UpdateMapActive", "POST");
+		UnityWebRequest request = new UnityWebRequest(BackendApiUrl.Build(serializationConfig.sharedBlocksApiBaseURL, "/api/UpdateMapActive"), "POST");
 		byte[] bytes = Encoding.UTF8.GetBytes(JsonUtility.ToJson(data));
 		bool retry = false;
 		request.uploadHandler = new UploadHandlerRaw(bytes);

@@ -82,7 +82,7 @@ public class BuilderSmallMonkeTrigger : MonoBehaviour
 		{
 			if (vRRig != null)
 			{
-				onPlayerEnteredTrigger?.Invoke(vRRig.OwningNetPlayer.ActorNumber);
+				onPlayerEnteredTrigger?.Invoke(vRRig.Creator.ActorNumber);
 			}
 			bool num = overlappingColliders.Count == 0;
 			if (!overlappingColliders.Contains(other))

@@ -5,6 +5,7 @@ using Unity.XR.CoreUtils;
 using UnityEngine;
 using UnityEngine.AI;
 
+[AddComponentMenu("GorillaTag/Ghost Reactor/GR Enemy Phantom")]
 public class GREnemyPhantom : MonoBehaviour, IGameEntityComponent, IGameEntitySerialize, IGameAgentComponent, IGameEntityDebugComponent
 {
 	public enum Behavior
@@ -434,7 +435,7 @@ public class GREnemyPhantom : MonoBehaviour, IGameEntityComponent, IGameEntitySe
 		VRRigCache.Instance.GetAllUsedRigs(tempRigs);
 		senseNearby.UpdateNearby(tempRigs, senseLineOfSight);
 		VRRig vRRig = senseNearby.PickClosest(out var _);
-		agent.RequestTarget((vRRig == null) ? null : vRRig.OwningNetPlayer);
+		agent.RequestTarget((vRRig == null) ? null : vRRig.Creator);
 		switch (currBehavior)
 		{
 		case Behavior.Idle:

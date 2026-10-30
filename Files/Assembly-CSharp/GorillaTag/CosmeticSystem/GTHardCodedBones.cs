@@ -104,7 +104,23 @@ public static class GTHardCodedBones
 		Pants = 48,
 		Back = 45,
 		Arms = Shirt,
-		TagEffect = 0
+		TagEffect = 0,
+		EarLeft = Face,
+		EarRight = Face,
+		EarBoth = Face,
+		NoseLeft = Face,
+		NoseRight = Face,
+		NoseBoth = Face,
+		GlassesLeft = Face,
+		GlassesRight = Face,
+		GlassesBoth = Face,
+		EyeLeft = Face,
+		EyeRight = Face,
+		EyeBoth = Face,
+		Mouth = Face,
+		Hair = Face,
+		FacialHair = Face,
+		Neck = 41
 	}
 
 	[Serializable]

@@ -5,6 +5,7 @@ using Unity.XR.CoreUtils;
 using UnityEngine;
 using UnityEngine.AI;
 
+[AddComponentMenu("GorillaTag/Ghost Reactor/GR Enemy Boss Moon Eye")]
 public class GREnemyBossMoonEye : MonoBehaviour, IGameEntityComponent, IGameEntitySerialize, IGameHittable, IGameAgentComponent, IGameEntityDebugComponent
 {
 	public enum Behavior
@@ -293,7 +294,7 @@ public class GREnemyBossMoonEye : MonoBehaviour, IGameEntityComponent, IGameEnti
 			VRRigCache.Instance.GetAllUsedRigs(tempRigs);
 			senseNearby.UpdateNearby(tempRigs, senseLineOfSight);
 			VRRig vRRig = senseNearby.PickClosest(out var _);
-			agent.RequestTarget((vRRig == null) ? null : vRRig.OwningNetPlayer);
+			agent.RequestTarget((vRRig == null) ? null : vRRig.Creator);
 			if (currAbility != null)
 			{
 				currAbility.Think(dt);

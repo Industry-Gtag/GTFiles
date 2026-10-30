@@ -15,6 +15,7 @@ using UnityEngine;
 using UnityEngine.Networking;
 using UnityEngine.XR.Interaction.Toolkit;
 
+[AddComponentMenu("GorillaTag/KID/KID Manager")]
 public class KIDManager : MonoBehaviour
 {
 	public delegate void OnEmailResultReceived(bool result);
@@ -57,12 +58,6 @@ public class KIDManager : MonoBehaviour
 	private static string _debugKIDLocalePlayerPrefRef = "KID_SPOOF_LOCALE";
 
 	private static string parentEmailForUserPlayerPrefRef;
-
-	[OnEnterPlay_SetNull]
-	private static Action _sessionUpdatedCallback = null;
-
-	[OnEnterPlay_SetNull]
-	private static Action _onKIDInitialisationComplete = null;
 
 	public static OnEmailResultReceived onEmailResultReceived;
 
@@ -1293,7 +1288,7 @@ public class KIDManager : MonoBehaviour
 		Debug.Log("[KID::MANAGER::SERVER_ROUTER] URL: " + URL);
 		while (true)
 		{
-			using UnityWebRequest request = new UnityWebRequest(PlayFabAuthenticatorSettings.KidApiBaseUrl + URL, operationType);
+			using UnityWebRequest request = new UnityWebRequest(BackendApiUrl.Build(PlayFabAuthenticatorSettings.KidApiBaseUrl, URL), operationType);
 			byte[] data = Array.Empty<byte>();
 			string json = "";
 			if (requestData != null)

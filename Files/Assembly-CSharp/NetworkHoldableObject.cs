@@ -1,8 +1,6 @@
-using Fusion;
 using Photon.Pun;
 using UnityEngine;
 
-[NetworkBehaviourWeaved(0)]
 public abstract class NetworkHoldableObject : NetworkComponent, IHoldableObject
 {
 	public virtual bool TwoHanded => false;
@@ -26,31 +24,11 @@ public abstract class NetworkHoldableObject : NetworkComponent, IHoldableObject
 		return true;
 	}
 
-	public override void ReadDataFusion()
-	{
-	}
-
-	public override void WriteDataFusion()
-	{
-	}
-
 	protected override void ReadDataPUN(PhotonStream stream, PhotonMessageInfo info)
 	{
 	}
 
 	protected override void WriteDataPUN(PhotonStream stream, PhotonMessageInfo info)
 	{
-	}
-
-	[WeaverGenerated]
-	public override void CopyBackingFieldsToState(bool P_0)
-	{
-		base.CopyBackingFieldsToState(P_0);
-	}
-
-	[WeaverGenerated]
-	public override void CopyStateToBackingFields()
-	{
-		base.CopyStateToBackingFields();
 	}
 }
