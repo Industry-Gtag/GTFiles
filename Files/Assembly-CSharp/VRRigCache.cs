@@ -341,6 +341,15 @@ public class VRRigCache : MonoBehaviour
 				}
 			}
 			OnActiveRigsChanged?.Invoke();
+			try
+			{
+				CosmeticsV2Spawner_Dirty.OnLocalPlayerLeftRoom();
+				CosmeticsV2Spawner_Dirty.UnloadReleasedCosmeticAssets();
+			}
+			catch (Exception exception)
+			{
+				Debug.LogException(exception);
+			}
 		}
 	}
 

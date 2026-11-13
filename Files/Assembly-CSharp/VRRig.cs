@@ -319,8 +319,6 @@ public class VRRig : MonoBehaviour, IWrappedSerializable, IPreDisable, IUserCosm
 
 	public HoverboardVisual hoverboardVisual;
 
-	public string heldBoardSkinDisplayName;
-
 	private int hoverboardEnabledCount;
 
 	public HoldableHand bodyHolds;
@@ -1344,10 +1342,6 @@ public class VRRig : MonoBehaviour, IWrappedSerializable, IPreDisable, IUserCosm
 		{
 			return true;
 		}
-		if (CosmeticsController.instance.IsGlobalCosmeticAutoGrant(itemName))
-		{
-			return true;
-		}
 		bool canTryOn = CosmeticsController.instance.GetItemFromDict(itemName).canTryOn;
 		if (inTryOnRoom & canTryOn)
 		{
@@ -1972,6 +1966,7 @@ public class VRRig : MonoBehaviour, IWrappedSerializable, IPreDisable, IUserCosm
 		{
 			result.hoverboardPosRot = BitPackUtils.PackHandPosRotForNetwork(hoverboardVisual.NominalLocalPosition, hoverboardVisual.NominalLocalRotation);
 			result.hoverboardColor = BitPackUtils.PackColorForNetwork(hoverboardVisual.boardColor);
+			result.hoverboardSkinActorNumber = hoverboardVisual.boardSkinActorNumber;
 		}
 		if (flag2)
 		{
@@ -2073,12 +2068,7 @@ public class VRRig : MonoBehaviour, IWrappedSerializable, IPreDisable, IUserCosm
 			Color boardColor = BitPackUtils.UnpackColorFromNetwork(data.hoverboardColor);
 			if (handRot.IsValid())
 			{
-				bool num4 = !hoverboardVisual.IsHeld;
-				hoverboardVisual.SetIsHeld(isHeldLeftHanded, localPos.ClampMagnitudeSafe(1f), handRot, boardColor);
-				if (num4)
-				{
-					hoverboardVisual.ApplySkin(heldBoardSkinDisplayName);
-				}
+				hoverboardVisual.SetIsHeld(isHeldLeftHanded, localPos.ClampMagnitudeSafe(1f), handRot, boardColor, data.hoverboardSkinActorNumber);
 			}
 		}
 		else if (hoverboardVisual.gameObject.activeSelf)
@@ -2156,6 +2146,7 @@ public class VRRig : MonoBehaviour, IWrappedSerializable, IPreDisable, IUserCosm
 		{
 			stream.SendNext(inputStruct.hoverboardPosRot);
 			stream.SendNext(inputStruct.hoverboardColor);
+			stream.SendNext(inputStruct.hoverboardSkinActorNumber);
 		}
 		if ((inputStruct.packedFields & 0x1000) != 0)
 		{
@@ -2213,11 +2204,13 @@ public class VRRig : MonoBehaviour, IWrappedSerializable, IPreDisable, IUserCosm
 			data.ropeGrabIsLeft = (bool)stream.ReceiveNext();
 			data.ropeGrabIsBody = (bool)stream.ReceiveNext();
 			data.ropeGrabOffset = (Vector3)stream.ReceiveNext();
+			data.movingSurfaceIsMonkeBlock = (bool)stream.ReceiveNext();
 		}
 		if ((data.packedFields & 0x2000) != 0)
 		{
 			data.hoverboardPosRot = (long)stream.ReceiveNext();
 			data.hoverboardColor = (short)stream.ReceiveNext();
+			data.hoverboardSkinActorNumber = (int)stream.ReceiveNext();
 		}
 		if ((data.packedFields & 0x1000) != 0)
 		{

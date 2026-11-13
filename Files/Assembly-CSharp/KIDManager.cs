@@ -725,7 +725,7 @@ public class KIDManager : MonoBehaviour
 		}
 		if (num != 1)
 		{
-			UGCPermissionManager.UseKID();
+			UGCPermissionManager.CheckPermissions();
 			if (CurrentSession == null)
 			{
 				PlayFabAuthenticator.instance.GetSafety();

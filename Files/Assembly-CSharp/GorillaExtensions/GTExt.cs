@@ -1259,6 +1259,26 @@ public static class GTExt
 		return new Vector3(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t, a.z + (b.z - a.z) * t);
 	}
 
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	public static bool HasMaxValues(this in Vector3Int value)
+	{
+		if (value.x == int.MaxValue || value.x == int.MinValue || value.y == int.MaxValue || value.y == int.MinValue || value.z == int.MaxValue || value.z == int.MinValue)
+		{
+			return true;
+		}
+		return false;
+	}
+
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	public static bool BoundsMinMaxHasMaxValues(this in UnityEngine.BoundsInt value)
+	{
+		if (!value.min.HasMaxValues())
+		{
+			return value.max.HasMaxValues();
+		}
+		return true;
+	}
+
 	public static string ToLongString(this Vector3 self)
 	{
 		return $"[{self.x}, {self.y}, {self.z}]";

@@ -388,6 +388,8 @@ public class TransferrableObject : HoldableObject, ISelfValidator, IRequestableO
 
 	public ECosmeticSelectSide CosmeticSelectedSide { get; set; }
 
+	public event Action<TransferrableObject> OnPositionStateChanged;
+
 	public void FixTransformOverride()
 	{
 		transferrableItemSlotTransformOverride = GetComponent<TransferrableItemSlotTransformOverride>();
@@ -1321,6 +1323,7 @@ public class TransferrableObject : HoldableObject, ISelfValidator, IRequestableO
 				interpState = InterpolateState.None;
 			}
 			OnStateChanged();
+			OnPositionStateChanged?.Invoke(this);
 		}
 		if (currentState == PositionState.Dropped)
 		{

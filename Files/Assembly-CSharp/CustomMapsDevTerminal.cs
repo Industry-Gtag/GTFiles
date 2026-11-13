@@ -486,7 +486,12 @@ public class CustomMapsDevTerminal : CustomMapsTerminalScreen
 				NetworkSystem.Instance.ReturnToSinglePlayer();
 			}
 			CustomMapNetworkJoinTrigger.SuppressJoins = true;
-			VirtualStumpSerializer.Instance.LoadMapSynced(selectedMap.Id, GTMapLoadSource.dev_terminal);
+			GTMapLoadOrigin loadOrigin = new GTMapLoadOrigin
+			{
+				Terminal = GTMapTerminal.tent,
+				Page = GTMapTerminalPage.dev
+			};
+			VirtualStumpSerializer.Instance.LoadMapSynced(selectedMap.Id, GTMapLoadSource.dev_terminal, loadOrigin);
 			statusMessage = "LOADING " + FormatMapName(selectedMap) + "...";
 			Redraw();
 		}
