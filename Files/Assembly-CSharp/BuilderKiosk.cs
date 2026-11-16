@@ -80,6 +80,10 @@ public class BuilderKiosk : MonoBehaviour
 
 	private bool animating;
 
+	private Coroutine swapCoroutine;
+
+	private bool dioramaUpdatePending;
+
 	[SerializeField]
 	private Transform itemDisplayPos;
 
@@ -156,6 +160,10 @@ public class BuilderKiosk : MonoBehaviour
 		}
 		await Task.Delay(TimeSpan.FromSeconds(5.0));
 		Debug.Log("Task await complete.");
+		if (this == null)
+		{
+			return;
+		}
 		if (availableItems.Count > 0 && BuilderSetManager.instance.pulledStoreItems)
 		{
 			hasInitFromPlayfab = true;
@@ -213,6 +221,30 @@ public class BuilderKiosk : MonoBehaviour
 			array[i].onPressed += OnSetButtonPressed;
 		}
 		UpdateLabels();
+	}
+
+	private void OnEnable()
+	{
+		if (dioramaUpdatePending)
+		{
+			dioramaUpdatePending = false;
+			UpdateDiorama();
+		}
+	}
+
+	private void OnDisable()
+	{
+		if (animating)
+		{
+			if (swapCoroutine != null)
+			{
+				StopCoroutine(swapCoroutine);
+				swapCoroutine = null;
+			}
+			itemDisplayAnimation.Stop();
+			itemDisplayAnimation.clip.SampleAnimation(itemDisplayAnimation.gameObject, itemDisplayAnimation.clip.length);
+			CompleteSwap();
+		}
 	}
 
 	private void OnDestroy()
@@ -415,10 +447,16 @@ public class BuilderKiosk : MonoBehaviour
 
 	public void UpdateDiorama()
 	{
-		if (isMiniKiosk || !base.gameObject.activeInHierarchy)
+		if (isMiniKiosk)
 		{
 			return;
 		}
+		if (!base.gameObject.activeInHierarchy)
+		{
+			dioramaUpdatePending = true;
+			return;
+		}
+		dioramaUpdatePending = false;
 		if (itemToBuy.isNullItem)
 		{
 			countdownText.gameObject.SetActive(value: false);
@@ -429,14 +467,12 @@ public class BuilderKiosk : MonoBehaviour
 		}
 		if (animating)
 		{
-			StopCoroutine(PlaySwapAnimation());
-			if (currentDiorama != null)
+			if (swapCoroutine != null)
 			{
-				UnityEngine.Object.Destroy(currentDiorama);
-				currentDiorama = null;
+				StopCoroutine(swapCoroutine);
+				swapCoroutine = null;
 			}
-			currentDiorama = nextDiorama;
-			nextDiorama = null;
+			CompleteSwap();
 		}
 		animating = true;
 		if (nextDiorama != null)
@@ -457,13 +493,19 @@ public class BuilderKiosk : MonoBehaviour
 		{
 			currentDiorama.transform.SetParent(itemDisplayPos, worldPositionStays: false);
 		}
-		StartCoroutine(PlaySwapAnimation());
+		swapCoroutine = StartCoroutine(PlaySwapAnimation());
 	}
 
 	private IEnumerator PlaySwapAnimation()
 	{
 		itemDisplayAnimation.Play();
 		yield return new WaitForSeconds(itemDisplayAnimation.clip.length);
+		swapCoroutine = null;
+		CompleteSwap();
+	}
+
+	private void CompleteSwap()
+	{
 		if (currentDiorama != null)
 		{
 			UnityEngine.Object.Destroy(currentDiorama);
