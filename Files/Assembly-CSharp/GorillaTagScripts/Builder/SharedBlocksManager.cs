@@ -105,6 +105,14 @@ public class SharedBlocksManager : MonoBehaviour
 	}
 
 	[Serializable]
+	private class GetMapDataFromIDResponse
+	{
+		public string creatorNickname;
+
+		public string mapData;
+	}
+
+	[Serializable]
 	private class GetMapIDFromPlayerRequest : SharedBlocksRequestBase
 	{
 		public string requestId;
@@ -244,6 +252,8 @@ public class SharedBlocksManager : MonoBehaviour
 
 	private int getMapDataFromIDRetryCount;
 
+	private readonly Queue<(string mapID, BlocksMapRequestCallback callback)> queuedMapDataRequests = new Queue<(string, BlocksMapRequestCallback)>();
+
 	private bool getTopMapsInProgress;
 
 	private int getTopMapsRetryCount;
@@ -265,14 +275,6 @@ public class SharedBlocksManager : MonoBehaviour
 	private static List<string> localMapIds = new List<string>(BuilderScanKiosk.NUM_SAVE_SLOTS);
 
 	private List<SharedBlocksMap> mapResponseCache = new List<SharedBlocksMap>(5);
-
-	private SharedBlocksMap defaultMap;
-
-	private bool hasDefaultMap;
-
-	private double defaultMapCacheTime = double.MinValue;
-
-	private bool getDefaultMapInProgress;
 
 	public List<SharedBlocksMap> LatestPopularMaps => latestPopularMaps;
 
@@ -394,6 +396,24 @@ public class SharedBlocksManager : MonoBehaviour
 		{
 			mapResponseCache.RemoveAt(0);
 		}
+	}
+
+	public static bool IsSharedBlocksZone(GTZone zone)
+	{
+		if (zone != GTZone.monkeBlocksShared && zone != GTZone.monkeBlocksFeaturedA)
+		{
+			return zone == GTZone.monkeBlocksFeaturedB;
+		}
+		return true;
+	}
+
+	public static bool IsInSharedBlocksZone()
+	{
+		if (!ZoneManagement.IsInZone(GTZone.monkeBlocksShared) && !ZoneManagement.IsInZone(GTZone.monkeBlocksFeaturedA))
+		{
+			return ZoneManagement.IsInZone(GTZone.monkeBlocksFeaturedB);
+		}
+		return true;
 	}
 
 	public static bool IsMapIDValid(string mapID)
@@ -823,7 +843,7 @@ public class SharedBlocksManager : MonoBehaviour
 		}
 		if (getMapDataFromIDInProgress)
 		{
-			GTDev.LogWarning("SharedBlocksManager RequestMapDataFromID Fetch already in progress");
+			queuedMapDataRequests.Enqueue((mapID, callback));
 			return;
 		}
 		getMapDataFromIDInProgress = true;
@@ -838,7 +858,7 @@ public class SharedBlocksManager : MonoBehaviour
 
 	private IEnumerator GetMapDataFromID(GetMapDataFromIDRequest data, BlocksMapRequestCallback callback)
 	{
-		UnityWebRequest request = new UnityWebRequest(BackendApiUrl.Build(serializationConfig.sharedBlocksApiBaseURL, "/api/GetMapData"), "POST");
+		UnityWebRequest request = new UnityWebRequest(BackendApiUrl.Build(serializationConfig.sharedBlocksApiBaseURL, "/api/GetMapDataV2"), "POST");
 		byte[] bytes = Encoding.UTF8.GetBytes(JsonUtility.ToJson(data));
 		bool retry = false;
 		request.uploadHandler = new UploadHandlerRaw(bytes);
@@ -848,8 +868,23 @@ public class SharedBlocksManager : MonoBehaviour
 		bool flag;
 		if (request.result == UnityWebRequest.Result.Success)
 		{
-			string text = request.downloadHandler.text;
-			GetMapDataFromIDComplete(data.mapId, text, callback);
+			GetMapDataFromIDResponse getMapDataFromIDResponse = null;
+			try
+			{
+				getMapDataFromIDResponse = JsonConvert.DeserializeObject<GetMapDataFromIDResponse>(request.downloadHandler.text);
+			}
+			catch (Exception ex)
+			{
+				GTDev.LogError("SharedBlocksManager GetMapDataFromID " + ex.Message);
+			}
+			if (getMapDataFromIDResponse == null)
+			{
+				GetMapDataFromIDComplete(data.mapId, null, callback);
+			}
+			else
+			{
+				GetMapDataFromIDComplete(data.mapId, getMapDataFromIDResponse.mapData, callback, getMapDataFromIDResponse.creatorNickname);
+			}
 		}
 		else
 		{
@@ -860,23 +895,33 @@ public class SharedBlocksManager : MonoBehaviour
 				{
 					if (responseCode < 600)
 					{
-						goto IL_0149;
+						goto IL_0199;
 					}
 				}
 				else if (responseCode == 408 || responseCode == 429)
 				{
-					goto IL_0149;
+					goto IL_0199;
 				}
 				flag = false;
-				goto IL_0151;
+				goto IL_01a1;
 			}
 			retry = true;
 		}
-		goto IL_0176;
-		IL_0149:
+		goto IL_01c7;
+		IL_0199:
 		flag = true;
-		goto IL_0151;
-		IL_0176:
+		goto IL_01a1;
+		IL_01a1:
+		if (flag)
+		{
+			retry = true;
+		}
+		else
+		{
+			GetMapDataFromIDComplete(data.mapId, null, callback);
+		}
+		goto IL_01c7;
+		IL_01c7:
 		if (retry)
 		{
 			if (getMapDataFromIDRetryCount < maxRetriesOnFail)
@@ -886,6 +931,7 @@ public class SharedBlocksManager : MonoBehaviour
 				yield return new WaitForSecondsRealtime(time);
 				getMapDataFromIDInProgress = false;
 				RequestMapDataFromID(data.mapId, callback);
+				StartQueuedMapDataRequests();
 			}
 			else
 			{
@@ -893,34 +939,36 @@ public class SharedBlocksManager : MonoBehaviour
 				GetMapDataFromIDComplete(data.mapId, null, callback);
 			}
 		}
-		yield break;
-		IL_0151:
-		if (flag)
-		{
-			retry = true;
-		}
-		else
-		{
-			GetMapDataFromIDComplete(data.mapId, null, callback);
-		}
-		goto IL_0176;
 	}
 
-	private void GetMapDataFromIDComplete(string mapID, [CanBeNull] string response, BlocksMapRequestCallback callback)
+	private void GetMapDataFromIDComplete(string mapID, [CanBeNull] string response, BlocksMapRequestCallback callback, string creatorNickname = null)
 	{
 		getMapDataFromIDInProgress = false;
 		if (response == null)
 		{
 			callback?.Invoke(null);
-			return;
 		}
-		SharedBlocksMap sharedBlocksMap = new SharedBlocksMap
+		else
 		{
-			MapID = mapID,
-			MapData = response
-		};
-		AddMapToResponseCache(sharedBlocksMap);
-		callback?.Invoke(sharedBlocksMap);
+			SharedBlocksMap sharedBlocksMap = new SharedBlocksMap
+			{
+				MapID = mapID,
+				CreatorNickName = creatorNickname,
+				MapData = response
+			};
+			AddMapToResponseCache(sharedBlocksMap);
+			callback?.Invoke(sharedBlocksMap);
+		}
+		StartQueuedMapDataRequests();
+	}
+
+	private void StartQueuedMapDataRequests()
+	{
+		while (!getMapDataFromIDInProgress && queuedMapDataRequests.Count > 0)
+		{
+			(string, BlocksMapRequestCallback) tuple = queuedMapDataRequests.Dequeue();
+			RequestMapDataFromID(tuple.Item1, tuple.Item2);
+		}
 	}
 
 	public bool RequestGetTopMaps(int pageNum, int pageSize, string sort)

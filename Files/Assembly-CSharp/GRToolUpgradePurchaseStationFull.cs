@@ -164,8 +164,6 @@ public class GRToolUpgradePurchaseStationFull : MonoBehaviour, ITickSystemTick
 
 	private bool bGripRightLastFrame;
 
-	private float maxHandleRange = 0.09f;
-
 	private float timeSinceLastHandleBroadcast;
 
 	private float angleOfLastHandleBroadcast;

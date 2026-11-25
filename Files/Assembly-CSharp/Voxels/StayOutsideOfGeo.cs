@@ -16,9 +16,6 @@ public class StayOutsideOfGeo : MonoBehaviour
 	private float _threshold = 0.4f;
 
 	[SerializeField]
-	private bool _pauseOnPenetration = true;
-
-	[SerializeField]
 	private Collider _disableOnMove;
 
 	private VoxelWorld _voxelWorld;

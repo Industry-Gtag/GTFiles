@@ -448,7 +448,7 @@ public class VirtualStumpOptionsTerminal : MonoBehaviour, IWssAuthPrompter
 		}
 		else if (processingAccountLink)
 		{
-			stringBuilder.Append(linkAccountPromptString + "\n\n");
+			stringBuilder.Append(accountLinkingPromptString + "\n\n");
 			stringBuilder.Append(urlLabelString + cachedLinkURL + "\n");
 			stringBuilder.Append(linkCodeLabelString + cachedLinkCode + "\n");
 		}

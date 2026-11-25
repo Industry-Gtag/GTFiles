@@ -87,12 +87,6 @@ public class CustomMapsDisplayScreen : CustomMapsTerminalScreen
 	private string mapLoadingErrorInvalidModFile = "INSTALL FAILED DUE TO INVALID MAP FILE";
 
 	[SerializeField]
-	private string mapNotDownloadedString = "NOT DOWNLOADED";
-
-	[SerializeField]
-	private string mapNeedsUpdateString = "NEEDS UPDATE";
-
-	[SerializeField]
 	private string hiddenMapTitle = "HIDDEN MAP";
 
 	[SerializeField]
@@ -107,8 +101,6 @@ public class CustomMapsDisplayScreen : CustomMapsTerminalScreen
 	private bool hasModProfile;
 
 	private bool mapLoadError;
-
-	private bool isFavorite;
 
 	public Mod currentMapMod { get; private set; }
 

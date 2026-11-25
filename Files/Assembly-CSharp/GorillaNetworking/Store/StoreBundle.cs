@@ -14,6 +14,8 @@ public class StoreBundle : IDisposable
 
 	private static readonly string defaultCurrencySymbol = "$";
 
+	private static readonly string hiddenPriceText = "GET NOW!";
+
 	[NonSerialized]
 	public string purchaseButtonStringFormat = "THE {0}\n{1}";
 
@@ -102,6 +104,8 @@ public class StoreBundle : IDisposable
 
 	public string bundleDescriptionText => _storeBundleDataReference.bundleDescriptionText;
 
+	public StoreBundleData storeBundleData => _storeBundleDataReference;
+
 	public StoreBundle()
 	{
 		isOwned = false;
@@ -178,12 +182,13 @@ public class StoreBundle : IDisposable
 			{
 				continue;
 			}
+			bool active = hasGTFCPrice && !bundleStand.HidesPrice;
 			GameObject[] gtfcObjects = bundleStand.GtfcObjects;
 			foreach (GameObject gameObject in gtfcObjects)
 			{
 				if ((bool)gameObject)
 				{
-					gameObject.SetActive(hasGTFCPrice);
+					gameObject.SetActive(active);
 				}
 			}
 		}
@@ -213,13 +218,19 @@ public class StoreBundle : IDisposable
 		}
 		foreach (BundleStand bundleStand in bundleStands)
 		{
-			if (!(bundleStand == null))
+			if (bundleStand == null)
 			{
-				bundleStand.UpdatePurchaseButtonText(text);
-				if ((bool)bundleStand.GtfcPriceLabel && HasGTFCPrice)
-				{
-					bundleStand.GtfcPriceLabel.SetText(text2);
-				}
+				continue;
+			}
+			if (bundleStand.HidesPrice)
+			{
+				bundleStand.UpdatePurchaseButtonText(string.Format(purchaseButtonStringFormat, bundleName, hiddenPriceText));
+				continue;
+			}
+			bundleStand.UpdatePurchaseButtonText(text);
+			if ((bool)bundleStand.GtfcPriceLabel && HasGTFCPrice)
+			{
+				bundleStand.GtfcPriceLabel.SetText(text2);
 			}
 		}
 	}

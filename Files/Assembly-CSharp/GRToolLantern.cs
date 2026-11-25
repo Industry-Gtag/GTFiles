@@ -26,9 +26,6 @@ public class GRToolLantern : MonoBehaviour, IGRSummoningEntity
 	private float timeOnPerEnergyUseDurationSeconds = 2f;
 
 	[SerializeField]
-	private int minEnergyPerUse = 1;
-
-	[SerializeField]
 	private float turnOnSoundVolume;
 
 	[SerializeField]

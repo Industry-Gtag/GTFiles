@@ -1,21 +1,10 @@
+using System;
 using Photon.Pun;
 using Photon.Realtime;
 using UnityEngine;
 
 public class ArcadeMachine : NetworkComponent
 {
-	[SerializeField]
-	private ArcadeGame arcadeGame;
-
-	[SerializeField]
-	private ArcadeMachineJoystick[] sticks;
-
-	[SerializeField]
-	private Renderer screen;
-
-	[SerializeField]
-	private bool networkSynchronized = true;
-
 	[SerializeField]
 	private CallLimiter soundCallLimit;
 
@@ -27,55 +16,30 @@ public class ArcadeMachine : NetworkComponent
 
 	private ArcadeGame arcadeGameInstance;
 
-	private Player[] playersPerJoystick = new Player[4];
+	private IArcadeSimulator gameSimulator;
 
-	private float[] playerIdleTimeouts = new float[4];
+	[SerializeField]
+	private float broadcastInterval;
+
+	private float nextBroadcastTimestamp;
 
 	protected override void Awake()
 	{
 		base.Awake();
 		audioSource = GetComponent<AudioSource>();
+		gameSimulator = GetComponent<IArcadeSimulator>();
 	}
 
 	protected override void Start()
 	{
 		base.Start();
-		if (arcadeGame != null && arcadeGame.Scale.x > 0f && arcadeGame.Scale.y > 0f)
-		{
-			arcadeGameInstance = Object.Instantiate(arcadeGame, screen.transform);
-			arcadeGameInstance.transform.localScale = new Vector3(1f / arcadeGameInstance.Scale.x, 1f / arcadeGameInstance.Scale.y, 1f);
-			screen.forceRenderingOff = true;
-			arcadeGameInstance.SetMachine(this);
-		}
-	}
-
-	public void PlaySound(int soundId, int priority)
-	{
-		if (!audioSource.isPlaying || audioSourcePriority >= priority)
-		{
-			audioSource.GTStop();
-			audioSourcePriority = priority;
-			audioSource.clip = arcadeGameInstance.audioClips[soundId];
-			audioSource.GTPlay();
-			if (networkSynchronized && base.IsMine)
-			{
-				base.GetView.RPC("ArcadeGameInstance_OnPlaySound_RPC", RpcTarget.Others, soundId);
-			}
-		}
-	}
-
-	public bool IsPlayerLocallyControlled(int player)
-	{
-		return sticks[player].heldByLocalPlayer;
+		RoomSystem.JoinedRoomEvent += new Action(OnJoinedRoom);
+		RoomSystem.PlayerJoinedEvent += new Action<NetPlayer>(OnPlayerEnteredRoom);
 	}
 
 	internal override void OnEnable()
 	{
 		base.OnEnable();
-		for (int i = 0; i < sticks.Length; i++)
-		{
-			sticks[i].Init(this, i);
-		}
 	}
 
 	internal override void OnDisable()
@@ -84,35 +48,44 @@ public class ArcadeMachine : NetworkComponent
 	}
 
 	[PunRPC]
-	private void ArcadeGameInstance_OnPlaySound_RPC(int id, PhotonMessageInfo info)
+	private void ArcadeGame_JoinGameData_RPC(double anchorFrameTimestamp, int anchorFrame, object[] frameSerialized, PhotonMessageInfo info)
 	{
-		if (info.Sender.IsMasterClient && id <= arcadeGameInstance.audioClips.Length && id >= 0 && soundCallLimit.CheckCallTime(Time.time))
+		MonkeAgent.IncrementRPCCall(info, "ArcadeGame_JoinGameData_RPC");
+		if (info.Sender.IsMasterClient && double.IsFinite(anchorFrameTimestamp) && frameSerialized != null)
 		{
-			audioSource.GTStop();
-			audioSource.clip = arcadeGameInstance.audioClips[id];
-			audioSource.GTPlay();
+			gameSimulator.JoinGameInProgress(anchorFrameTimestamp, anchorFrame, frameSerialized);
 		}
 	}
 
-	public void OnJoystickStateChange(int player, ArcadeButtons buttons)
+	private void OnJoinedRoom()
 	{
-		if ((object)arcadeGameInstance != null)
+		gameSimulator.StartGame();
+	}
+
+	private void OnPlayerEnteredRoom(NetPlayer newPlayer)
+	{
+		if (PhotonNetwork.IsMasterClient)
 		{
-			arcadeGameInstance.OnInputStateChange(player, buttons);
+			gameSimulator.FinalizeJoinGameData(out var anchorFrameTimestamp, out var anchorFrame, out var stateData);
+			SendRPC("ArcadeGame_JoinGameData_RPC", newPlayer, anchorFrameTimestamp, anchorFrame, stateData);
 		}
 	}
 
-	public bool IsControllerInUse(int player)
+	public void BroadcastGameState()
 	{
-		if (base.IsMine)
+		if (!PhotonNetwork.IsMasterClient)
 		{
-			if (playersPerJoystick[player] != null)
+			return;
+		}
+		gameSimulator.FinalizeJoinGameData(out var anchorFrameTimestamp, out var anchorFrame, out var stateData);
+		Player[] playerList = PhotonNetwork.PlayerList;
+		foreach (Player player in playerList)
+		{
+			if (!player.IsLocal)
 			{
-				return Time.time < playerIdleTimeouts[player];
+				SendRPC("ArcadeGame_JoinGameData_RPC", player, anchorFrameTimestamp, anchorFrame, stateData);
 			}
-			return false;
 		}
-		return (buttonsStateValue & (1 << player * 8)) != 0;
 	}
 
 	protected override void WriteDataPUN(PhotonStream stream, PhotonMessageInfo info)
@@ -123,13 +96,16 @@ public class ArcadeMachine : NetworkComponent
 	{
 	}
 
-	public void ReadPlayerDataPUN(int player, PhotonStream stream, PhotonMessageInfo info)
+	private void Update()
 	{
-		arcadeGameInstance.ReadPlayerDataPUN(player, stream, info);
-	}
-
-	public void WritePlayerDataPUN(int player, PhotonStream stream, PhotonMessageInfo info)
-	{
-		arcadeGameInstance.WritePlayerDataPUN(player, stream, info);
+		if (Time.time > nextBroadcastTimestamp)
+		{
+			bool num = nextBroadcastTimestamp != 0f && PhotonNetwork.IsMasterClient;
+			nextBroadcastTimestamp = Time.time + broadcastInterval;
+			if (num)
+			{
+				BroadcastGameState();
+			}
+		}
 	}
 }

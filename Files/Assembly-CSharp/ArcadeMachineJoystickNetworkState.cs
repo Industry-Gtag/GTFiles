@@ -11,9 +11,11 @@ public class ArcadeMachineJoystickNetworkState : NetworkComponent
 
 	protected override void ReadDataPUN(PhotonStream stream, PhotonMessageInfo info)
 	{
+		joystick.ReadDataPUN(stream, info);
 	}
 
 	protected override void WriteDataPUN(PhotonStream stream, PhotonMessageInfo info)
 	{
+		joystick.WriteDataPUN(stream, info);
 	}
 }

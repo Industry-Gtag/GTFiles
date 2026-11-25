@@ -29,9 +29,6 @@ public class BuilderSmallHandTrigger : MonoBehaviour
 
 	internal UnityEvent TriggeredEvent = new UnityEvent();
 
-	[SerializeField]
-	private BuilderPiece myPiece;
-
 	public bool TriggeredThisFrame => lastTriggeredFrame == Time.frameCount;
 
 	private void OnTriggerEnter(Collider other)

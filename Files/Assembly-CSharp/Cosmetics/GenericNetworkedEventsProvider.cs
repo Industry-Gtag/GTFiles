@@ -62,7 +62,7 @@ public class GenericNetworkedEventsProvider : MonoBehaviour, PrefabNameSerialize
 	{
 		if (myRig == null)
 		{
-			myRig = GetComponentInParent<VRRig>();
+			myRig = VRRig.FindCosmeticOwnerRig(this);
 		}
 		if (_events == null)
 		{

@@ -28,8 +28,6 @@ public class HangingClaw : MonoBehaviourPostTick
 
 	public float velocityDamping = 0.98f;
 
-	private float maxY;
-
 	private LineRenderer lineRenderer;
 
 	private RopeSegment[] ropeSegs;

@@ -256,19 +256,16 @@ public class Paddleball : ArcadeGame
 		}
 		for (int i = 0; i < p.Length; i++)
 		{
-			if (IsPlayerLocallyControlled(i))
+			_ = requestedPos[i];
+			if (getButtonState(i, ArcadeButtons.UP))
 			{
-				_ = requestedPos[i];
-				if (getButtonState(i, ArcadeButtons.UP))
-				{
-					requestedPos[i] += Time.deltaTime * paddleSpeed;
-				}
-				else if (getButtonState(i, ArcadeButtons.DOWN))
-				{
-					requestedPos[i] -= Time.deltaTime * paddleSpeed;
-				}
-				requestedPos[i] = Mathf.Clamp(requestedPos[i], 0f - tableSizePaddle.y, tableSizePaddle.y);
+				requestedPos[i] += Time.deltaTime * paddleSpeed;
 			}
+			else if (getButtonState(i, ArcadeButtons.DOWN))
+			{
+				requestedPos[i] -= Time.deltaTime * paddleSpeed;
+			}
+			requestedPos[i] = Mathf.Clamp(requestedPos[i], 0f - tableSizePaddle.y, tableSizePaddle.y);
 			float value = ((NetworkSystem.Instance.InRoom && !NetworkSystem.Instance.IsMasterClient) ? Mathf.MoveTowards(p[i].transform.localPosition.y, officialPos[i], Time.deltaTime * paddleSpeed) : Mathf.MoveTowards(p[i].transform.localPosition.y, requestedPos[i], Time.deltaTime * paddleSpeed));
 			p[i].transform.localPosition = p[i].transform.localPosition.WithY(Mathf.Clamp(value, 0f - tableSizePaddle.y, tableSizePaddle.y));
 			if (getButtonState(i, ArcadeButtons.GRAB))

@@ -198,6 +198,8 @@ internal class RoomSystem : MonoBehaviour
 
 		public const byte GENERAL_FX = 14;
 
+		public const byte PROJECTILE_CAUGHT = 15;
+
 		public const byte VOX_REQ_WORLD = 100;
 
 		public const byte VOX_REQ_OPERATION = 101;
@@ -252,6 +254,8 @@ internal class RoomSystem : MonoBehaviour
 	private static readonly object[] impactSendData;
 
 	private static readonly List<int> hashValues;
+
+	private static readonly object[] caughtSendData;
 
 	[OnExitPlay_SetNull]
 	internal static Action<LavaSyncEventData> OnLavaSyncReceived;
@@ -491,6 +495,42 @@ internal class RoomSystem : MonoBehaviour
 			impactSendData[4] = a;
 			impactSendData[5] = projectileCount;
 			SendEvent(1, impactSendData, in NetworkSystemRaiseEvent.neoOthers, reliable: false);
+		}
+	}
+
+	internal static void SendProjectileCaught(NetPlayer thrower, int projectileCount, Vector3 position)
+	{
+		if (JoinedRoom && thrower != null)
+		{
+			caughtSendData[0] = thrower.ActorNumber;
+			caughtSendData[1] = projectileCount;
+			caughtSendData[2] = position;
+			SendEvent(15, caughtSendData, in NetworkSystemRaiseEvent.neoOthers, reliable: true);
+		}
+	}
+
+	internal static void DeserializeProjectileCaught(object[] caughtData, PhotonMessageInfoWrapped info)
+	{
+		NetPlayer player = NetworkSystem.Instance.GetPlayer(info.senderID);
+		MonkeAgent.IncrementRPCCall(info, "ProjectileCaught");
+		if (!VRRigCache.Instance.TryGetVrrig(player, out var playerRig))
+		{
+			return;
+		}
+		NetPlayer player2 = NetworkSystem.Instance.GetPlayer(Convert.ToInt32(caughtData[0]));
+		int num = Convert.ToInt32(caughtData[1]);
+		Vector3 v = (Vector3)caughtData[2];
+		if (player2 != null)
+		{
+			SlingshotProjectile projectile;
+			if (!v.IsValid(10000f))
+			{
+				MonkeAgent.instance.SendReport("invalid catch state", player.UserId, player.NickName);
+			}
+			else if (playerRig.Rig.IsPositionInRange(v, 4f) && ProjectileTracker.TryTakeProjectile(player2, num, out projectile) && projectile.IsLaunched && projectile.projectileOwner == player2 && projectile.myProjectileCount == num)
+			{
+				projectile.Deactivate();
+			}
 		}
 	}
 
@@ -759,6 +799,7 @@ internal class RoomSystem : MonoBehaviour
 		projectileSendData = new object[9];
 		impactSendData = new object[6];
 		hashValues = new List<int>(2);
+		caughtSendData = new object[3];
 		lavaSyncSendData = new object[25];
 		monkePointsRedeemedSendData = new object[1];
 		playerEffectDictionary = new Dictionary<PlayerEffect, PlayerEffectConfig>();
@@ -807,6 +848,7 @@ internal class RoomSystem : MonoBehaviour
 		netEventCallbacks[12] = DeserializeLavaSync;
 		netEventCallbacks[13] = DeserializeMonkePointsRedeemed;
 		netEventCallbacks[14] = DeserializeEffect;
+		netEventCallbacks[15] = DeserializeProjectileCaught;
 		soundEffectCallback = OnPlaySoundEffect;
 		statusEffectCallback = OnStatusEffect;
 		VoxelManager.RegisterNetEventCallbacks();

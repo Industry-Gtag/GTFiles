@@ -144,32 +144,27 @@ public class MedalClipRelay : MonoBehaviour, IGorillaSliceableSimple
 
 	public static void Clip(MedalClip.ClipType ct)
 	{
-		if (_clips == null)
+		if (_clips == null || !_clips.TryGetValue(ct, out var value) || value == null)
 		{
 			return;
 		}
-		MedalClip medalClip = _clips[ct];
-		if (medalClip == null)
+		if (value.ReqOccurances > 1 && value.ReqTimeWindow > 0f)
 		{
-			return;
-		}
-		if (medalClip.ReqOccurances > 1 && medalClip.ReqTimeWindow > 0f)
-		{
-			if (!_clipStreaks.ContainsKey(medalClip.MyClipType))
+			if (!_clipStreaks.ContainsKey(value.MyClipType))
 			{
-				_clipStreaks.Add(medalClip.MyClipType, new MedalClipStreak
+				_clipStreaks.Add(value.MyClipType, new MedalClipStreak
 				{
-					reqOccurances = medalClip.ReqOccurances,
-					reqTimeWindow = medalClip.ReqTimeWindow,
+					reqOccurances = value.ReqOccurances,
+					reqTimeWindow = value.ReqTimeWindow,
 					firstOccuranceTime = Time.time
 				});
 			}
-			_clipStreaks[medalClip.MyClipType].lastOccuranceTime = Time.time;
-			_clipStreaks[medalClip.MyClipType].occurances++;
+			_clipStreaks[value.MyClipType].lastOccuranceTime = Time.time;
+			_clipStreaks[value.MyClipType].occurances++;
 		}
 		else
 		{
-			UnityWebRequest unityWebRequest = UnityWebRequest.Post(_url, medalClip.Payload, "application/json; charset=utf-8");
+			UnityWebRequest unityWebRequest = UnityWebRequest.Post(_url, value.Payload, "application/json; charset=utf-8");
 			unityWebRequest.SetRequestHeader("publicKey", _APIKey);
 			unityWebRequest.SendWebRequest();
 		}

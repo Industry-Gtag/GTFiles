@@ -167,8 +167,9 @@ public class SnowballThrowable : HoldableObject, IHeldItem
 	{
 	}
 
-	protected new virtual void OnDestroy()
+	protected override void OnDestroy()
 	{
+		base.OnDestroy();
 	}
 
 	public void SetSnowballActiveLocal(bool enabled)

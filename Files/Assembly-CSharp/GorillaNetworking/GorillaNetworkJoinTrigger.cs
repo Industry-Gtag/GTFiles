@@ -177,7 +177,7 @@ public class GorillaNetworkJoinTrigger : GorillaTriggerBox
 
 	public virtual bool SameZoneAsOverride()
 	{
-		return NetworkSystem.Instance.groupJoinOverrideGameMode.StartsWith(networkZone);
+		return string.Equals(GameModeString.ZoneFromPropertyString(NetworkSystem.Instance.groupJoinOverrideGameMode), networkZone, StringComparison.Ordinal);
 	}
 
 	public virtual byte GetRoomSize(bool subscribed)

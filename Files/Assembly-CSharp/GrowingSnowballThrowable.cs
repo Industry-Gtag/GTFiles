@@ -156,6 +156,7 @@ public class GrowingSnowballThrowable : SnowballThrowable
 
 	protected override void OnDestroy()
 	{
+		base.OnDestroy();
 		DestroyPhotonEvents();
 	}
 

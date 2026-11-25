@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using GorillaExtensions;
 using GorillaLocomotion;
 using GorillaTag;
 using UnityEngine;
@@ -27,8 +26,6 @@ public class SnowballMaker : MonoBehaviourPostTick
 
 	private Dictionary<int, string> snowballPlayfabIdByMaterialIndex = new Dictionary<int, string>();
 
-	private bool m_hasGrowingSnowball;
-
 	public static SnowballMaker leftHandInstance { get; private set; }
 
 	public static SnowballMaker rightHandInstance { get; private set; }
@@ -40,14 +37,6 @@ public class SnowballMaker : MonoBehaviourPostTick
 		if (snowballs == null)
 		{
 			snowballs = new SnowballThrowable[0];
-		}
-		SnowballThrowable[] array = snowballs;
-		foreach (SnowballThrowable snowballThrowable in array)
-		{
-			if (!snowballThrowable.IsNull() && snowballThrowable is GrowingSnowballThrowable)
-			{
-				m_hasGrowingSnowball = true;
-			}
 		}
 		if (isLeftHand)
 		{

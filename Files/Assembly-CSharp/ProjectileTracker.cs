@@ -110,6 +110,26 @@ internal static class ProjectileTracker
 		return m_localProjectiles[index];
 	}
 
+	public static bool TryTakeProjectile(NetPlayer thrower, int index, out SlingshotProjectile projectile)
+	{
+		projectile = null;
+		if (index < 0 || index >= m_localProjectiles.Length)
+		{
+			return false;
+		}
+		if (thrower == NetworkSystem.Instance.LocalPlayer)
+		{
+			projectile = m_localProjectiles[index].projectileInstance;
+			return projectile.IsNotNull();
+		}
+		var (flag, projectileInfo) = GetAndRemoveRemotePlayerProjectile(thrower, index);
+		if (flag)
+		{
+			projectile = projectileInfo.projectileInstance;
+		}
+		return flag;
+	}
+
 	public static (bool, ProjectileInfo) GetAndRemoveRemotePlayerProjectile(NetPlayer player, int index)
 	{
 		(bool, ProjectileInfo) result = (false, default(ProjectileInfo));

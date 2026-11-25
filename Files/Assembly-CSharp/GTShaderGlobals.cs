@@ -20,12 +20,7 @@ public class GTShaderGlobals : MonoBehaviour, IGorillaSliceableSimple
 	private static Vector4 gBlueNoiseTexWH;
 
 	[Space]
-	private static int gActivePawns;
-
-	[Space]
 	private static DateTime gStartTime = DateTime.Today.AddDays(-1.0).ToUniversalTime();
-
-	private static Matrix4x4[] gPawnData = GorillaPawn.ShaderData;
 
 	private static ShaderHashId _GT_WorldSpaceCameraPos = "_GT_WorldSpaceCameraPos";
 
@@ -36,10 +31,6 @@ public class GTShaderGlobals : MonoBehaviour, IGorillaSliceableSimple
 	private static ShaderHashId _GT_iFrame = "_GT_iFrame";
 
 	private static ShaderHashId _GT_Time = "_GT_Time";
-
-	private static ShaderHashId _GT_PawnData = "_GT_PawnData";
-
-	private static ShaderHashId _GT_PawnActiveCount = "_GT_PawnActiveCount";
 
 	public static Vector3 WorldSpaceCameraPos => gMainCameraWorldPos;
 
@@ -100,14 +91,6 @@ public class GTShaderGlobals : MonoBehaviour, IGorillaSliceableSimple
 	{
 		gTime = (float)(DateTime.UtcNow - gStartTime).TotalSeconds;
 		Shader.SetGlobalFloat(_GT_Time, gTime);
-	}
-
-	private static void UpdatePawns()
-	{
-		gActivePawns = GorillaPawn.ActiveCount;
-		GorillaPawn.SyncPawnData();
-		Shader.SetGlobalMatrixArray(_GT_PawnData, gPawnData);
-		Shader.SetGlobalInteger(_GT_PawnActiveCount, gActivePawns);
 	}
 
 	private static void InitBlueNoiseTex()

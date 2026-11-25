@@ -147,16 +147,41 @@ public class ChickenSword : MonoBehaviour, PrefabNameSerialized
 			return;
 		}
 		Vector3 averageVelocity = velocityTracker.GetAverageVelocity(worldSpace: true);
-		if (currentState == SwordState.Ready && averageVelocity.magnitude > hitVelocityThreshold)
+		if (currentState != SwordState.Ready || !(averageVelocity.magnitude > hitVelocityThreshold))
 		{
-			hitReceievd = true;
-			OnHitTargetShared?.Invoke(playerRig);
-			if ((bool)transferrableObject && transferrableObject.IsMyItem())
+			return;
+		}
+		hitReceievd = true;
+		int num;
+		int num2;
+		if (cosmeticSwapper != null)
+		{
+			num = ((playerRig == GorillaTagger.Instance.offlineVRRig) ? 1 : 0);
+			if (num != 0)
 			{
-				bool arg = transferrableObject.InLeftHand();
-				OnHitTargetLocal?.Invoke(arg);
+				num2 = cosmeticSwapper.GetCurrentStepIndex(playerRig);
+				goto IL_0079;
 			}
-			if (cosmeticSwapper != null && playerRig == GorillaTagger.Instance.offlineVRRig && cosmeticSwapper.GetCurrentStepIndex(playerRig) >= cosmeticSwapper.GetNumberOfSteps() && PhotonNetwork.InRoom && _events != null && _events.Activate != null)
+		}
+		else
+		{
+			num = 0;
+		}
+		num2 = 0;
+		goto IL_0079;
+		IL_0079:
+		int num3 = num2;
+		OnHitTargetShared?.Invoke(playerRig);
+		if ((bool)transferrableObject && transferrableObject.IsMyItem())
+		{
+			bool arg = transferrableObject.InLeftHand();
+			OnHitTargetLocal?.Invoke(arg);
+		}
+		if (num != 0)
+		{
+			int numberOfSteps = cosmeticSwapper.GetNumberOfSteps();
+			int currentStepIndex = cosmeticSwapper.GetCurrentStepIndex(playerRig);
+			if (num3 < numberOfSteps && currentStepIndex >= numberOfSteps && PhotonNetwork.InRoom && _events != null && _events.Activate != null)
 			{
 				_events.Activate.RaiseAll();
 			}

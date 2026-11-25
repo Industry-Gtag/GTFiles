@@ -1,12 +1,13 @@
 using System.Collections.Generic;
 using GorillaGameModes;
 using GorillaNetworking;
+using GorillaTag.CosmeticSystem;
 using UnityEngine;
 using UnityEngine.Events;
 
 namespace GorillaTag.Cosmetics;
 
-public class CosmeticSwapper : MonoBehaviour, ITickSystemTick
+public class CosmeticSwapper : MonoBehaviour, ITickSystemTick, ISpawnable
 {
 	private enum SwapMode
 	{
@@ -55,6 +56,12 @@ public class CosmeticSwapper : MonoBehaviour, ITickSystemTick
 	[SerializeField]
 	private UnityEvent<VRRig> onSwapAccepted;
 
+	[Tooltip("Like onSwapAccepted, but only for the player wearing this cosmetic (the one doing the swapping). Hook the swapper's own haptics here.")]
+	[SerializeField]
+	private UnityEvent<VRRig> onSwapAcceptedLocal;
+
+	private bool isOwnerLocal;
+
 	private CosmeticsController controller;
 
 	private Stack<CosmeticState> newSwappedCosmetics = new Stack<CosmeticState>();
@@ -78,6 +85,10 @@ public class CosmeticSwapper : MonoBehaviour, ITickSystemTick
 			return false;
 		}
 	}
+
+	public bool IsSpawned { get; set; }
+
+	public ECosmeticSelectSide CosmeticSelectedSide { get; set; }
 
 	public bool TickRunning { get; set; }
 
@@ -144,10 +155,14 @@ public class CosmeticSwapper : MonoBehaviour, ITickSystemTick
 
 	public void SwapInCosmeticIfNotSwapped(VRRig vrRig)
 	{
-		if (!(vrRig == null) && !IsExcludedGameMode() && (swapMode != SwapMode.AllAtOnce || (!IsWearingAnySwapCosmetic(vrRig) && HasAnythingToSwapIn(vrRig))))
+		if (!(vrRig == null) && !IsExcludedGameMode() && (swapMode != SwapMode.AllAtOnce || (!IsWearingAnySwapCosmetic(vrRig) && (HasAnythingToSwapIn(vrRig) || HasDormantOwnedCosmetic(vrRig)))))
 		{
-			onSwapAccepted?.Invoke(vrRig);
 			TriggerSwap(vrRig);
+			onSwapAccepted?.Invoke(vrRig);
+			if (isOwnerLocal)
+			{
+				onSwapAcceptedLocal?.Invoke(vrRig);
+			}
 		}
 	}
 
@@ -211,6 +226,52 @@ public class CosmeticSwapper : MonoBehaviour, ITickSystemTick
 			}
 		}
 		return false;
+	}
+
+	private bool IsSwapItem(string nameOrId)
+	{
+		string itemName = FindItem(nameOrId).itemName;
+		foreach (string cosmeticID in cosmeticIDs)
+		{
+			if (FindItem(cosmeticID).itemName == itemName)
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+
+	private bool HasDormantOwnedCosmetic(VRRig rig)
+	{
+		List<CosmeticSwapForcedState> forRig = CosmeticSwapForcedState.GetForRig(rig);
+		if (controller == null || forRig == null)
+		{
+			return false;
+		}
+		foreach (CosmeticSwapForcedState item in forRig)
+		{
+			if (!item.IsStateOn && IsSwapItem(item.CosmeticId))
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+
+	private void ForceDormantOwnedCosmetics(VRRig rig)
+	{
+		List<CosmeticSwapForcedState> forRig = CosmeticSwapForcedState.GetForRig(rig);
+		if (forRig == null)
+		{
+			return;
+		}
+		foreach (CosmeticSwapForcedState item in forRig)
+		{
+			if (!item.IsStateOn && IsSwapItem(item.CosmeticId))
+			{
+				item.Force(stepTimeout);
+			}
+		}
 	}
 
 	private SwapMode GetCurrentMode()
@@ -293,17 +354,16 @@ public class CosmeticSwapper : MonoBehaviour, ITickSystemTick
 					}
 					DiscardSwappedCosmetics();
 				}
+				foreach (string cosmeticID in cosmeticIDs)
 				{
-					foreach (string cosmeticID in cosmeticIDs)
+					CosmeticState? cosmeticState3 = SwapInCosmeticWithReturn(cosmeticID, rig);
+					if (cosmeticState3.HasValue)
 					{
-						CosmeticState? cosmeticState3 = SwapInCosmeticWithReturn(cosmeticID, rig);
-						if (cosmeticState3.HasValue)
-						{
-							AddNewSwappedCosmetic(cosmeticState3.Value);
-						}
+						AddNewSwappedCosmetic(cosmeticState3.Value);
 					}
-					return;
 				}
+				ForceDormantOwnedCosmetics(rig);
+				return;
 			}
 			int cosmeticStepIndex = CosmeticStepIndex;
 			if (cosmeticStepIndex >= cosmeticIDs.Count)
@@ -468,6 +528,15 @@ public class CosmeticSwapper : MonoBehaviour, ITickSystemTick
 			return CosmeticsController.CosmeticSlots.HandLeft;
 		}
 		return CosmeticsController.CategoryToNonTransferrableSlot(item.itemCategory);
+	}
+
+	public void OnSpawn(VRRig rig)
+	{
+		isOwnerLocal = rig != null && rig.isLocal;
+	}
+
+	public void OnDespawn()
+	{
 	}
 
 	public void Tick()

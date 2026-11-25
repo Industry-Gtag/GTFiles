@@ -648,7 +648,8 @@ public class MonkeBallGame : NetworkComponent, ITickSystemTick
 			Color color = team[teamId].color;
 			for (int i = 0; i < endZoneEffects.Length; i++)
 			{
-				endZoneEffects[i].startColor = color;
+				ParticleSystem.MainModule main = endZoneEffects[i].main;
+				main.startColor = color;
 				endZoneEffects[i].Play();
 			}
 		}

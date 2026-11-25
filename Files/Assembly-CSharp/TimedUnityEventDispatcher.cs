@@ -151,7 +151,7 @@ public class TimedUnityEventDispatcher : MonoBehaviour, IGorillaSliceableSimple
 			{
 				await Task.Yield();
 			}
-			PlayFabTitleDataCache.Instance.GetTitleData(titleDataKey, onDateRetrieved, onTDError);
+			PlayFabTitleDataCache.Instance.GetTitleData(titleDataKey, onDateRetrieved, OnTDError);
 			break;
 		case TimedUnityEventDispatcherMode.SCHEDULED_EVENT:
 		{
@@ -176,7 +176,7 @@ public class TimedUnityEventDispatcher : MonoBehaviour, IGorillaSliceableSimple
 	{
 		try
 		{
-			setStartDate(DateTime.Parse(s));
+			SetStartDate(DateTime.Parse(s));
 			readyState = ReadyState.Ready;
 		}
 		catch (Exception ex)
@@ -191,7 +191,7 @@ public class TimedUnityEventDispatcher : MonoBehaviour, IGorillaSliceableSimple
 		throw new Exception("Oops! Function not available in production builds.");
 	}
 
-	private void setStartDate(DateTime d)
+	private void SetStartDate(DateTime d)
 	{
 		nodeList.Clear();
 		for (int i = 0; i < nodes.Length; i++)
@@ -206,7 +206,7 @@ public class TimedUnityEventDispatcher : MonoBehaviour, IGorillaSliceableSimple
 		activeNodeIndex = 0;
 	}
 
-	private void onTDError(PlayFabError error)
+	private void OnTDError(PlayFabError error)
 	{
 		Debug.LogError($"TitleDataDateRefActivation :: onTDError :: {error}");
 		readyState = ReadyState.Crashed;

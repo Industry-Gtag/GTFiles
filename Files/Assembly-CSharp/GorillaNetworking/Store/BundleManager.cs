@@ -21,8 +21,26 @@ public class BundleManager : MonoBehaviour
 
 		private static IEnumerable GetEndCapSpawnPoints()
 		{
-			return from x in UnityEngine.Object.FindObjectsByType<EndCapSpawnPoint>(FindObjectsSortMode.None)
-				select new ValueDropdownItem(x.transform.parent.parent.name + "/" + x.transform.parent.name + "/" + x.name, x);
+			EndCapSpawnPoint[] array = null;
+			if (array == null)
+			{
+				array = UnityEngine.Object.FindObjectsByType<EndCapSpawnPoint>(FindObjectsSortMode.None);
+			}
+			return array.Select((EndCapSpawnPoint x) => new ValueDropdownItem(GetDropdownName(x), x));
+		}
+
+		private static string GetDropdownName(EndCapSpawnPoint spawnPoint)
+		{
+			Transform parent = spawnPoint.transform.parent;
+			if (parent == null)
+			{
+				return spawnPoint.name;
+			}
+			if (parent.parent == null)
+			{
+				return parent.name + "/" + spawnPoint.name;
+			}
+			return parent.parent.name + "/" + parent.name + "/" + spawnPoint.name;
 		}
 	}
 
@@ -66,12 +84,41 @@ public class BundleManager : MonoBehaviour
 	[SerializeField]
 	private StoreBundleData tryOnBundleButton5;
 
+	private readonly List<StoreBundleData> _timedTryOnBundles = new List<StoreBundleData>();
+
+	private readonly Dictionary<StoreBundleData, HashSet<EndCapSpawnPoint>> _liveTimedEndCaps = new Dictionary<StoreBundleData, HashSet<EndCapSpawnPoint>>();
+
 	private IEnumerable GetStoreBundles()
 	{
-		List<StoreBundleData> list = new List<StoreBundleData>();
-		list.Add(nullBundleData);
+		List<StoreBundleData> list = new List<StoreBundleData> { nullBundleData };
 		list.AddRange(_bundleScriptableObjects);
+		foreach (StoreBundle storeBundle in _storeBundles)
+		{
+			if (storeBundle.storeBundleData != null && !list.Contains(storeBundle.storeBundleData))
+			{
+				list.Add(storeBundle.storeBundleData);
+			}
+		}
 		return list;
+	}
+
+	private static bool IsSpawnedStand(BundleStand stand)
+	{
+		Transform parent = stand.transform.parent;
+		EndCapSpawnPoint endCapSpawnPoint = ((parent != null) ? parent.GetComponentInParent<EndCapSpawnPoint>(includeInactive: true) : null);
+		if (endCapSpawnPoint == null || parent != endCapSpawnPoint.StandParent)
+		{
+			return false;
+		}
+		return true;
+	}
+
+	private void AddBundleScriptableObject(StoreBundleData bundleData)
+	{
+		if (bundleData != null && !_bundleScriptableObjects.Contains(bundleData))
+		{
+			_bundleScriptableObjects.Add(bundleData);
+		}
 	}
 
 	public void Awake()
@@ -120,11 +167,11 @@ public class BundleManager : MonoBehaviour
 	{
 		foreach (StoreBundle storeBundle in _storeBundles)
 		{
-			foreach (BundleStand bundleStand in storeBundle.bundleStands)
+			foreach (BundleStand bundleStand2 in storeBundle.bundleStands)
 			{
-				if (bundleStand != null)
+				if (bundleStand2 != null && IsSpawnedStand(bundleStand2))
 				{
-					UnityEngine.Object.DestroyImmediate(bundleStand.gameObject);
+					UnityEngine.Object.DestroyImmediate(bundleStand2.gameObject);
 				}
 			}
 		}
@@ -133,10 +180,13 @@ public class BundleManager : MonoBehaviour
 		storeBundlesBySKU.Clear();
 		_storeBundles.Clear();
 		_bundleScriptableObjects.Clear();
-		BundleStand[] array = UnityEngine.Object.FindObjectsByType<BundleStand>(FindObjectsSortMode.None);
-		for (int i = 0; i < array.Length; i++)
+		BundleStand[] componentsInChildren = GetComponentsInChildren<BundleStand>(includeInactive: true);
+		foreach (BundleStand bundleStand in componentsInChildren)
 		{
-			UnityEngine.Object.DestroyImmediate(array[i].gameObject);
+			if (IsSpawnedStand(bundleStand))
+			{
+				UnityEngine.Object.DestroyImmediate(bundleStand.gameObject);
+			}
 		}
 		for (int j = 0; j < BundleStands.Count; j++)
 		{
@@ -168,7 +218,7 @@ public class BundleManager : MonoBehaviour
 		}
 		if (!_bundleScriptableObjects.Contains(tryOnBundleButton5))
 		{
-			tryOnBundleButton4 = nullBundleData;
+			tryOnBundleButton5 = nullBundleData;
 		}
 	}
 
@@ -176,11 +226,11 @@ public class BundleManager : MonoBehaviour
 	{
 		foreach (StoreBundle storeBundle in _storeBundles)
 		{
-			foreach (BundleStand bundleStand in storeBundle.bundleStands)
+			foreach (BundleStand bundleStand2 in storeBundle.bundleStands)
 			{
-				if (bundleStand != null)
+				if (bundleStand2 != null && IsSpawnedStand(bundleStand2))
 				{
-					UnityEngine.Object.DestroyImmediate(bundleStand.gameObject);
+					UnityEngine.Object.DestroyImmediate(bundleStand2.gameObject);
 				}
 			}
 			storeBundle.Dispose();
@@ -195,10 +245,13 @@ public class BundleManager : MonoBehaviour
 		tryOnBundleButton3 = nullBundleData;
 		tryOnBundleButton4 = nullBundleData;
 		tryOnBundleButton5 = nullBundleData;
-		BundleStand[] array = UnityEngine.Object.FindObjectsByType<BundleStand>(FindObjectsSortMode.None);
-		for (int i = 0; i < array.Length; i++)
+		BundleStand[] componentsInChildren = GetComponentsInChildren<BundleStand>(includeInactive: true);
+		foreach (BundleStand bundleStand in componentsInChildren)
 		{
-			UnityEngine.Object.DestroyImmediate(array[i].gameObject);
+			if (IsSpawnedStand(bundleStand))
+			{
+				UnityEngine.Object.DestroyImmediate(bundleStand.gameObject);
+			}
 		}
 	}
 
@@ -212,7 +265,10 @@ public class BundleManager : MonoBehaviour
 		{
 			if (storeBundle2.playfabBundleID == bundleStand._bundleDataReference.playfabBundleID)
 			{
-				storeBundle2.bundleStands.Add(bundleStand);
+				if (!storeBundle2.bundleStands.Contains(bundleStand))
+				{
+					storeBundle2.bundleStands.Add(bundleStand);
+				}
 				return;
 			}
 		}
@@ -247,9 +303,13 @@ public class BundleManager : MonoBehaviour
 				_spawnedBundleStands.RemoveAt(num);
 			}
 		}
-		BundleStand[] array = UnityEngine.Object.FindObjectsByType<BundleStand>(FindObjectsSortMode.None);
-		foreach (BundleStand bundle in array)
+		BundleStand[] componentsInChildren = GetComponentsInChildren<BundleStand>(includeInactive: true);
+		foreach (BundleStand bundle in componentsInChildren)
 		{
+			if (!IsSpawnedStand(bundle))
+			{
+				continue;
+			}
 			if (_spawnedBundleStands.Any((SpawnedBundle x) => x.spawnLocationPath == bundle.transform.parent.gameObject.GetPath(3)))
 			{
 				SpawnedBundle spawnedBundle = _spawnedBundleStands.First((SpawnedBundle x) => x.spawnLocationPath == bundle.transform.parent.gameObject.GetPath(3));
@@ -273,7 +333,99 @@ public class BundleManager : MonoBehaviour
 
 	public StoreBundleData[] GetTryOnButtons()
 	{
-		return new StoreBundleData[5] { tryOnBundleButton1, tryOnBundleButton2, tryOnBundleButton3, tryOnBundleButton4, tryOnBundleButton5 };
+		StoreBundleData[] array = new StoreBundleData[5] { tryOnBundleButton1, tryOnBundleButton2, tryOnBundleButton3, tryOnBundleButton4, tryOnBundleButton5 };
+		for (int i = 0; i < array.Length; i++)
+		{
+			if (!IsEmptyTryOnSlot(array[i]) && !IsBundleOnLiveStand(array[i]))
+			{
+				array[i] = nullBundleData;
+			}
+		}
+		foreach (StoreBundleData timedTryOnBundle in _timedTryOnBundles)
+		{
+			if (Array.IndexOf(array, timedTryOnBundle) < 0)
+			{
+				int num = Array.FindIndex(array, IsEmptyTryOnSlot);
+				if (num < 0)
+				{
+					Debug.LogWarning("BundleManager :: no free try on slot for timed bundle " + timedTryOnBundle.playfabBundleID);
+					break;
+				}
+				array[num] = timedTryOnBundle;
+			}
+		}
+		return array;
+	}
+
+	public void SetTimedTryOnBundle(StoreBundleData bundleData, EndCapSpawnPoint endCap, bool isLive, bool addToFreeSlot)
+	{
+		if (bundleData == null)
+		{
+			return;
+		}
+		if (!_liveTimedEndCaps.TryGetValue(bundleData, out var value))
+		{
+			value = new HashSet<EndCapSpawnPoint>();
+			_liveTimedEndCaps.Add(bundleData, value);
+		}
+		if (isLive & addToFreeSlot)
+		{
+			value.Add(endCap);
+		}
+		else
+		{
+			value.Remove(endCap);
+		}
+		if (value.Count > 0)
+		{
+			if (!_timedTryOnBundles.Contains(bundleData))
+			{
+				_timedTryOnBundles.Add(bundleData);
+			}
+		}
+		else
+		{
+			_timedTryOnBundles.Remove(bundleData);
+		}
+		if (_tryOnBundlesStand != null)
+		{
+			_tryOnBundlesStand.RefreshTryOnButtons();
+		}
+	}
+
+	private bool IsEmptyTryOnSlot(StoreBundleData bundleData)
+	{
+		if (!(bundleData == null) && !(bundleData == nullBundleData))
+		{
+			return bundleData.playfabBundleID == "NULL";
+		}
+		return true;
+	}
+
+	private bool IsBundleOnLiveStand(StoreBundleData bundleData)
+	{
+		foreach (StoreBundle storeBundle in _storeBundles)
+		{
+			if (storeBundle.storeBundleData != bundleData)
+			{
+				continue;
+			}
+			bool flag = false;
+			foreach (BundleStand bundleStand in storeBundle.bundleStands)
+			{
+				if (!(bundleStand == null))
+				{
+					flag = true;
+					EndCapSpawnPoint componentInParent = bundleStand.GetComponentInParent<EndCapSpawnPoint>(includeInactive: true);
+					if (componentInParent == null || componentInParent.IsEndCapActive)
+					{
+						return true;
+					}
+				}
+			}
+			return !flag;
+		}
+		return true;
 	}
 
 	public void NotifyBundleOfErrorByPlayFabID(string ItemId)

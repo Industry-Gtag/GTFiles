@@ -208,6 +208,7 @@ public class PlayFabTitleDataCache : MonoBehaviour
 			{
 				mothershipError = "Mothership API call was not sent.";
 				UnityEngine.Debug.LogError("[PlayFabTitleDataCache::UpdateDataCo] " + mothershipError);
+				yield break;
 			}
 			yield return new WaitUntil(() => finished);
 			if (newTitleData == null)

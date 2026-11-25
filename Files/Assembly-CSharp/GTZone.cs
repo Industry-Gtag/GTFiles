@@ -41,5 +41,7 @@ public enum GTZone
 	VIMExperience4,
 	drill,
 	eventZone,
-	spaceMap
+	spaceMap,
+	monkeBlocksFeaturedA,
+	monkeBlocksFeaturedB
 }

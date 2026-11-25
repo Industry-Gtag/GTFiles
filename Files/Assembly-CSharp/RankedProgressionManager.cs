@@ -152,9 +152,6 @@ public class RankedProgressionManager : MonoBehaviour
 	[SerializeField]
 	private List<RankedProgressionTier> majorTiers = new List<RankedProgressionTier>();
 
-	[SerializeField]
-	private int newTierGracePeriod = 3;
-
 	public float MaxEloConstant = 90f;
 
 	private RankedProgressionEvent ProgressionEvent;

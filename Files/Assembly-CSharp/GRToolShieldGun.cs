@@ -70,8 +70,6 @@ public class GRToolShieldGun : MonoBehaviour
 
 	private bool activatedLocally;
 
-	private bool waitingForButtonRelease;
-
 	private float timeLastFired;
 
 	private float cooldownMinimum = 0.35f;

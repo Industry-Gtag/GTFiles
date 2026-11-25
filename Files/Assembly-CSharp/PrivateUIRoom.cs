@@ -56,11 +56,11 @@ public class PrivateUIRoom : MonoBehaviourTick
 
 	private Dictionary<Transform, Transform> uiParents;
 
-	private float _initialAudioVolume;
-
 	private bool inOverlay;
 
 	private OverlaySource overlayForcedSources;
+
+	private readonly Dictionary<OverlaySource, string> overlayForcedTexts = new Dictionary<OverlaySource, string>();
 
 	private static PrivateUIRoom instance;
 
@@ -289,6 +289,10 @@ public class PrivateUIRoom : MonoBehaviourTick
 			{
 				StopOverlay();
 			}
+			else
+			{
+				instance.RefreshForcedText();
+			}
 		}
 	}
 
@@ -297,6 +301,10 @@ public class PrivateUIRoom : MonoBehaviourTick
 		if (!(instance == null))
 		{
 			instance.overlayForcedSources |= source;
+			if (!string.IsNullOrEmpty(text))
+			{
+				instance.overlayForcedTexts[source] = text;
+			}
 			if (!instance.inOverlay)
 			{
 				instance._text.text = text;
@@ -310,9 +318,51 @@ public class PrivateUIRoom : MonoBehaviourTick
 		if (!(instance == null))
 		{
 			instance.overlayForcedSources &= ~source;
-			if (!instance.overlayForcedActive && instance.ui.Count == 0 && instance.inOverlay)
+			instance.overlayForcedTexts.Remove(source);
+			if (instance.overlayForcedActive)
+			{
+				instance.RefreshForcedText();
+			}
+			else if (instance.ui.Count == 0 && instance.inOverlay)
 			{
 				StopOverlay();
+			}
+		}
+	}
+
+	public static bool IsOverlayHeldByOthers(OverlaySource source)
+	{
+		if (instance == null || !instance.inOverlay)
+		{
+			return false;
+		}
+		if (instance.ui.Count <= 0)
+		{
+			return (instance.overlayForcedSources & ~source) != 0;
+		}
+		return true;
+	}
+
+	private void RefreshForcedText()
+	{
+		if (ui.Count > 0)
+		{
+			return;
+		}
+		string text = "";
+		using (Dictionary<OverlaySource, string>.ValueCollection.Enumerator enumerator = overlayForcedTexts.Values.GetEnumerator())
+		{
+			if (enumerator.MoveNext())
+			{
+				text = enumerator.Current;
+			}
+		}
+		if (!(_text.text == text))
+		{
+			_text.text = text;
+			if (GorillaTagger.hasInstance && (bool)GorillaTagger.Instance.mainCamera)
+			{
+				SetTextPositionAndRotation(GorillaTagger.Instance.mainCamera.transform);
 			}
 		}
 	}

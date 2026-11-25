@@ -22,21 +22,12 @@ public sealed class Playspace : MonoBehaviour
 	private float _sqrSnapToThreshold;
 
 	[SerializeField]
-	private GTPlayer m_gtPlayer;
-
-	[SerializeField]
 	private XROrigin m_xrOrigin;
-
-	private Transform m_xrBody;
 
 	private void Awake()
 	{
 		_sqrSphereRadius = _sphereRadius * _sphereRadius;
 		_sqrSnapToThreshold = _snapToThreshold * _snapToThreshold;
-	}
-
-	private void Start()
-	{
 	}
 
 	private void Update()

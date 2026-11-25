@@ -65,6 +65,10 @@ public class GorillaSkinToggle : MonoBehaviour, ISpawnable
 	void ISpawnable.OnSpawn(VRRig rig)
 	{
 		_rig = GetComponentInParent<VRRig>(includeInactive: true);
+		if (!_applied)
+		{
+			DestroyInstancedSkin();
+		}
 		if (coloringRules.Length != 0)
 		{
 			_activeSkin = GorillaSkin.CopyWithInstancedMaterials(_skin);
@@ -81,6 +85,20 @@ public class GorillaSkinToggle : MonoBehaviour, ISpawnable
 
 	void ISpawnable.OnDespawn()
 	{
+	}
+
+	private void OnDestroy()
+	{
+		DestroyInstancedSkin();
+	}
+
+	private void DestroyInstancedSkin()
+	{
+		if (_activeSkin != null && _activeSkin != _skin)
+		{
+			GorillaSkin.DestroyInstancedCopy(_activeSkin);
+		}
+		_activeSkin = null;
 	}
 
 	private void OnPlayerColorChanged(Color playerColor)

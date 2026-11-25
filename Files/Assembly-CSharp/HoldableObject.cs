@@ -4,7 +4,7 @@ public abstract class HoldableObject : MonoBehaviour, IHoldableObject
 {
 	public virtual bool TwoHanded => false;
 
-	protected void OnDestroy()
+	protected virtual void OnDestroy()
 	{
 		if (EquipmentInteractor.hasInstance)
 		{

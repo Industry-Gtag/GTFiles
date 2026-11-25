@@ -67,6 +67,26 @@ public class GorillaSkin : ScriptableObject
 		return gorillaSkin;
 	}
 
+	public static void DestroyInstancedCopy(GorillaSkin copy)
+	{
+		if (!(copy == null))
+		{
+			if (copy._chestMaterial != null)
+			{
+				UnityEngine.Object.Destroy(copy._chestMaterial);
+			}
+			if (copy._bodyMaterial != null)
+			{
+				UnityEngine.Object.Destroy(copy._bodyMaterial);
+			}
+			if (copy._scoreboardMaterial != null)
+			{
+				UnityEngine.Object.Destroy(copy._scoreboardMaterial);
+			}
+			UnityEngine.Object.Destroy(copy);
+		}
+	}
+
 	public static void ShowActiveSkin(VRRig rig)
 	{
 		GorillaSkin activeSkin = GetActiveSkin(rig, out var useDefaultBodySkin);

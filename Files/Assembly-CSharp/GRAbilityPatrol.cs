@@ -25,8 +25,6 @@ public class GRAbilityPatrol : GRAbilityBase
 
 	public AudioClip[] ambientPatrolSounds;
 
-	private double lastPartrolAmbientSoundTime;
-
 	private double nextPatrolGroanTime;
 
 	private Unity.Mathematics.Random patrolGroanSoundDelayRandom;

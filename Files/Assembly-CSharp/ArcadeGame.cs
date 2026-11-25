@@ -115,12 +115,6 @@ public abstract class ArcadeGame : MonoBehaviour
 
 	protected void PlaySound(int clipId, int prio = 3)
 	{
-		machine.PlaySound(clipId, prio);
-	}
-
-	protected bool IsPlayerLocallyControlled(int player)
-	{
-		return machine.IsPlayerLocallyControlled(player);
 	}
 
 	protected abstract void ButtonUp(int player, ArcadeButtons button);

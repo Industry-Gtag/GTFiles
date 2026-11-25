@@ -37,8 +37,6 @@ public class HoldableLighterCosmetic : MonoBehaviour
 
 	private LighterResult[] resultTimeline;
 
-	private bool triggerHeld;
-
 	private float lastCheckTime;
 
 	private VRRig rig;
@@ -76,7 +74,6 @@ public class HoldableLighterCosmetic : MonoBehaviour
 
 	public void TriggerPulled()
 	{
-		triggerHeld = true;
 		if (OwnerID == 0)
 		{
 			TrySetID();
@@ -125,7 +122,6 @@ public class HoldableLighterCosmetic : MonoBehaviour
 
 	public void TriggerReleased()
 	{
-		triggerHeld = false;
 		OnTriggerRelease?.Invoke();
 	}
 

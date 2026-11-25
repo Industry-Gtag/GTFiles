@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using GorillaTagScripts.Builder;
 using UnityEngine;
 using UnityEngine.XR;
 
@@ -69,7 +70,7 @@ public class GorillaHandClimber : MonoBehaviour
 			{
 				potentialClimbables.RemoveAt(num);
 			}
-			else if (gorillaClimbable.climbOnlyWhileSmall && !ZoneManagement.IsInZone(GTZone.monkeBlocksShared) && player.scale > 0.99f)
+			else if (gorillaClimbable.climbOnlyWhileSmall && !SharedBlocksManager.IsInSharedBlocksZone() && player.scale > 0.99f)
 			{
 				potentialClimbables.RemoveAt(num);
 			}

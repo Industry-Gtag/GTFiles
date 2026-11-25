@@ -50,6 +50,8 @@ public class TryOnBundlesStand : MonoBehaviour, IBuildValidation
 
 	private bool bError;
 
+	private bool initialized;
+
 	[Header("Error Text for Computer Screen")]
 	public string computerScreeErrorText = "ERROR COMPLETING PURCHASE! PLEASE RESTART THE GAME, AND MAKE SURE YOU HAVE A STABLE INTERNET CONNECTION. ";
 
@@ -91,6 +93,7 @@ public class TryOnBundlesStand : MonoBehaviour, IBuildValidation
 		PlayFabTitleDataCache.Instance.GetTitleData(PurchaseButtonDefaultTextTitleDataKey, OnPurchaseButtonDefaultTextTitleDataSuccess, OnPurchaseButtonDefaultTextTitleDataFailure);
 		PlayFabTitleDataCache.Instance.GetTitleData(PurchaseButtonAlreadyOwnTextTitleDataKey, OnPurchaseButtonAlreadyOwnTextTitleDataSuccess, OnPurchaseButtonAlreadyOwnTextTitleDataFailure);
 		InitalizeButtons();
+		initialized = true;
 	}
 
 	private void OnComputerDefaultTextTitleDataSuccess(string data)
@@ -163,13 +166,22 @@ public class TryOnBundlesStand : MonoBehaviour, IBuildValidation
 		computerScreenText.text = (bError ? computerScreeErrorText : ComputerDefaultTextTitleDataValue);
 	}
 
+	private static string[] GetTryOnItems(CosmeticsController.CosmeticItem item)
+	{
+		if (item.bundledItems == null || item.bundledItems.Length == 0)
+		{
+			return new string[1] { item.itemName };
+		}
+		return item.bundledItems;
+	}
+
 	private void RemoveBundle(string BundleID)
 	{
 		CosmeticsController.CosmeticItem itemFromDict = CosmeticsController.instance.GetItemFromDict(BundleID);
 		if (!itemFromDict.isNullItem)
 		{
-			string[] bundledItems = itemFromDict.bundledItems;
-			foreach (string itemName in bundledItems)
+			string[] tryOnItems = GetTryOnItems(itemFromDict);
+			foreach (string itemName in tryOnItems)
 			{
 				CosmeticsController.instance.RemoveCosmeticItemFromSet(CosmeticsController.instance.tryOnSet, itemName, applyToPlayerPrefs: false);
 			}
@@ -183,17 +195,18 @@ public class TryOnBundlesStand : MonoBehaviour, IBuildValidation
 		{
 			return;
 		}
+		string[] tryOnItems = GetTryOnItems(itemFromDict);
 		CosmeticsController.CosmeticItem[] items = CosmeticsController.instance.tryOnSet.items;
 		for (int i = 0; i < items.Length; i++)
 		{
 			CosmeticsController.CosmeticItem cosmeticItem = items[i];
-			if (!itemFromDict.bundledItems.Contains(cosmeticItem.itemName))
+			if (!tryOnItems.Contains(cosmeticItem.itemName))
 			{
 				CosmeticsController.instance.RemoveCosmeticItemFromSet(CosmeticsController.instance.tryOnSet, cosmeticItem.itemName, applyToPlayerPrefs: false);
 			}
 		}
-		string[] bundledItems = itemFromDict.bundledItems;
-		foreach (string itemID in bundledItems)
+		string[] array = tryOnItems;
+		foreach (string itemID in array)
 		{
 			if (!CosmeticsController.instance.tryOnSet.HasItem(itemID))
 			{
@@ -204,7 +217,8 @@ public class TryOnBundlesStand : MonoBehaviour, IBuildValidation
 
 	private async void LoadBundle(TryOnBundleButton pressedTryOnBundleButton, bool isLeftHand)
 	{
-		CosmeticsController.CosmeticItem BundleToTry = CosmeticsController.instance.GetItemFromDict(pressedTryOnBundleButton.playfabBundleID);
+		CosmeticsController.CosmeticItem itemFromDict = CosmeticsController.instance.GetItemFromDict(pressedTryOnBundleButton.playfabBundleID);
+		string[] tryOnItems = GetTryOnItems(itemFromDict);
 		float timeEntered = Time.time;
 		float maxTime = 1f;
 		bool flag = true;
@@ -212,13 +226,15 @@ public class TryOnBundlesStand : MonoBehaviour, IBuildValidation
 		{
 			if (Time.time > timeEntered + maxTime)
 			{
+				string arg = string.Join(", ", tryOnItems.Where((string x) => !CosmeticsController.instance.IsReadyForLocalTryOn(x)));
+				Debug.LogWarning($"TryOnBundlesStand - LoadBundle - timed out after {maxTime}s waiting for [{arg}] to load on the local rig ({pressedTryOnBundleButton.playfabBundleID})");
 				return;
 			}
 			await Awaitable.EndOfFrameAsync();
 			flag = false;
-			for (int i = 0; i < BundleToTry.bundledItems.Length; i++)
+			for (int num = 0; num < tryOnItems.Length; num++)
 			{
-				if (!CosmeticsController.instance.IsReadyForLocalTryOn(BundleToTry.bundledItems[i]))
+				if (!CosmeticsController.instance.IsReadyForLocalTryOn(tryOnItems[num]))
 				{
 					flag = true;
 				}
@@ -240,10 +256,11 @@ public class TryOnBundlesStand : MonoBehaviour, IBuildValidation
 			Debug.LogError("TryOnBundlesStand - PressTryOnBundleButton - Bundle is Null + " + pressedTryOnBundleButton.playfabBundleID);
 			return;
 		}
+		string[] tryOnItems = GetTryOnItems(itemFromDict);
 		bool flag = false;
-		for (int i = 0; i < itemFromDict.bundledItems.Length; i++)
+		for (int i = 0; i < tryOnItems.Length; i++)
 		{
-			if (!CosmeticsController.instance.IsReadyForLocalTryOn(itemFromDict.bundledItems[i]))
+			if (!CosmeticsController.instance.IsReadyForLocalTryOn(tryOnItems[i]))
 			{
 				flag = true;
 			}
@@ -257,7 +274,7 @@ public class TryOnBundlesStand : MonoBehaviour, IBuildValidation
 		{
 			ClearSelectedBundle();
 		}
-		switch (CosmeticsController.instance.CheckIfCosmeticSetMatchesItemSet(CosmeticsController.instance.tryOnSet, pressedTryOnBundleButton.playfabBundleID))
+		switch (CosmeticsController.instance.CheckIfCosmeticSetMatchesItems(CosmeticsController.instance.tryOnSet, tryOnItems))
 		{
 		case CosmeticsController.EWearingCosmeticSet.Complete:
 			ClearSelectedBundle();
@@ -349,6 +366,26 @@ public class TryOnBundlesStand : MonoBehaviour, IBuildValidation
 			}
 			purchaseButton.UpdateColor();
 		}
+	}
+
+	public void RefreshTryOnButtons()
+	{
+		if (!initialized)
+		{
+			return;
+		}
+		if (SelectedButtonIndex != -1)
+		{
+			StoreBundleData[] tryOnButtons = BundleManager.instance.GetTryOnButtons();
+			StoreBundleData storeBundleData = ((SelectedButtonIndex < tryOnButtons.Length) ? tryOnButtons[SelectedButtonIndex] : null);
+			if (storeBundleData == null || storeBundleData.playfabBundleID != SelectedBundlePlayFabID)
+			{
+				ClearSelectedBundle();
+				CosmeticsController.instance.UpdateShoppingCart();
+				CosmeticsController.instance.UpdateWornCosmetics(sync: true);
+			}
+		}
+		InitalizeButtons();
 	}
 
 	public void GetTryOnButtons()

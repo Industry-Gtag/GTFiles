@@ -88,8 +88,6 @@ public class BuilderPieceDoorSwinging : MonoBehaviour, IBuilderPieceComponent, I
 
 	private float checkHoldTriggersDelay = 3f;
 
-	private int pushDirection = 1;
-
 	private void Awake()
 	{
 		BuilderSmallMonkeTrigger[] array = doorHoldTriggers;

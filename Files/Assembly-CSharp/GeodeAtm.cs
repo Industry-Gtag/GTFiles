@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Threading.Tasks;
 using Oculus.Platform;
 using Oculus.Platform.Models;
 using Steamworks;
@@ -215,7 +214,7 @@ public class GeodeAtm : MonoBehaviour
 		});
 	}
 
-	private async Task StartPurchase(GeodePurchaseSize size)
+	private void StartPurchase(GeodePurchaseSize size)
 	{
 		if (SteamManager.Initialized && _steamMicroTransactionAuthorizationResponse == null)
 		{

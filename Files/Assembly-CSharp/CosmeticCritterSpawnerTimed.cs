@@ -6,11 +6,6 @@ public abstract class CosmeticCritterSpawnerTimed : CosmeticCritterSpawnerIndepe
 	[SerializeField]
 	private Vector2 spawnIntervalMinMax = new Vector2(2f, 5f);
 
-	[Tooltip("Currently does nothing.")]
-	[SerializeField]
-	[Range(0f, 1f)]
-	private float spawnChance = 1f;
-
 	protected override CallLimiter CreateCallLimiter()
 	{
 		return new CallLimiter(5, spawnIntervalMinMax.x);

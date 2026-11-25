@@ -1929,31 +1929,34 @@ public class CosmeticsController : MonoBehaviour, IGorillaSliceableSimple, IBuil
 		CreatorCodes.Initialize();
 	}
 
-	private void ApplyCosmeticAutoGrant(string playFabID, List<ItemInstance> inventory)
+	private void ApplyCosmeticAutoGrant(string itemId, List<ItemInstance> inventory)
 	{
 		if (GorillaTagger.Instance != null && GorillaTagger.Instance.offlineVRRig != null)
 		{
-			GorillaTagger.Instance.offlineVRRig.AddCosmetic(playFabID);
+			GorillaTagger.Instance.offlineVRRig.AddCosmetic(itemId);
 		}
-		if ((inventory != null && inventory.Exists((ItemInstance item) => item.ItemId == playFabID)) || GorillaServer.Instance == null || !cosmeticAutoGrantClaimsRequested.Add(playFabID))
+		if ((inventory != null && inventory.Exists((ItemInstance item) => item.ItemId == itemId)) || GorillaServer.Instance == null || !cosmeticAutoGrantClaimsRequested.Add(itemId))
 		{
 			return;
 		}
-		GorillaServer.Instance.ClaimItem(playFabID, delegate(GorillaServer.ClaimItemResponse response)
+		GorillaServer.Instance.ClaimItem(itemId, delegate(GorillaServer.ClaimItemResponse response)
 		{
 			if (!response.granted)
 			{
-				Debug.LogError("CosmeticAutoGrant: server refused ClaimItem for " + playFabID);
+				Debug.LogError("CosmeticAutoGrant: server refused ClaimItem for " + itemId);
 			}
 			else
 			{
 				UpdateMyCosmetics();
-				StartCoroutine(CheckIfMyCosmeticsUpdated(playFabID));
+				StartCoroutine(CheckIfMyCosmeticsUpdated(itemId));
 			}
 		}, delegate(string error)
 		{
-			cosmeticAutoGrantClaimsRequested.Remove(playFabID);
-			Debug.LogError("CosmeticAutoGrant: ClaimItem failed for " + playFabID + ": " + error);
+			Debug.LogError("CosmeticAutoGrant: ClaimItem failed for " + itemId + ": " + error);
+			if (error == null || !error.Contains("PlayFabIdNotFound"))
+			{
+				cosmeticAutoGrantClaimsRequested.Remove(itemId);
+			}
 		});
 	}
 
@@ -2451,11 +2454,14 @@ public class CosmeticsController : MonoBehaviour, IGorillaSliceableSimple, IBuil
 
 	public EWearingCosmeticSet CheckIfCosmeticSetMatchesItemSet(CosmeticSet set, string itemName)
 	{
+		return CheckIfCosmeticSetMatchesItems(set, allCosmeticsDict[itemName].bundledItems);
+	}
+
+	public EWearingCosmeticSet CheckIfCosmeticSetMatchesItems(CosmeticSet set, string[] bundledItems)
+	{
 		EWearingCosmeticSet eWearingCosmeticSet = EWearingCosmeticSet.NotASet;
-		CosmeticItem cosmeticItem = allCosmeticsDict[itemName];
-		if (cosmeticItem.bundledItems.Length != 0)
+		if (bundledItems != null && bundledItems.Length != 0)
 		{
-			string[] bundledItems = cosmeticItem.bundledItems;
 			foreach (string key in bundledItems)
 			{
 				if (AnyMatch(set, allCosmeticsDict[key]))
@@ -3470,25 +3476,12 @@ public class CosmeticsController : MonoBehaviour, IGorillaSliceableSimple, IBuil
 		}
 		if (item.itemCategory == CosmeticCategory.Set && item.bundledItems != null)
 		{
-			if (item.bundledItems.Length == 1)
+			for (int i = 0; i < item.bundledItems.Length; i++)
 			{
-				return AnyMatch(set, GetItemFromDict(item.bundledItems[0]));
-			}
-			if (item.bundledItems.Length == 2)
-			{
-				if (!AnyMatch(set, GetItemFromDict(item.bundledItems[0])))
+				if (AnyMatch(set, GetItemFromDict(item.bundledItems[i])))
 				{
-					return AnyMatch(set, GetItemFromDict(item.bundledItems[1]));
+					return true;
 				}
-				return true;
-			}
-			if (item.bundledItems.Length >= 3)
-			{
-				if (!AnyMatch(set, GetItemFromDict(item.bundledItems[0])) && !AnyMatch(set, GetItemFromDict(item.bundledItems[1])))
-				{
-					return AnyMatch(set, GetItemFromDict(item.bundledItems[2]));
-				}
-				return true;
 			}
 		}
 		return false;

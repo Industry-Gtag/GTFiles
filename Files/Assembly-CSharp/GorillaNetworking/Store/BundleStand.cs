@@ -26,9 +26,24 @@ public class BundleStand : MonoBehaviour, IBuildValidation
 
 	public string playfabBundleID => _bundleDataReference.playfabBundleID;
 
-	public GtfcPriceLabel GtfcPriceLabel { get; }
+	[field: SerializeField]
+	public GtfcPriceLabel GtfcPriceLabel { get; private set; }
 
-	public GameObject[] GtfcObjects { get; }
+	[field: SerializeField]
+	public GameObject[] GtfcObjects { get; private set; }
+
+	public bool HidesPrice
+	{
+		get
+		{
+			EndCapSpawnPoint componentInParent = GetComponentInParent<EndCapSpawnPoint>(includeInactive: true);
+			if (componentInParent != null)
+			{
+				return componentInParent.HidesPurchasePrice;
+			}
+			return false;
+		}
+	}
 
 	private bool RequiresCreatorCodeProvider()
 	{

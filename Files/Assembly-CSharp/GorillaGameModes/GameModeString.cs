@@ -66,4 +66,18 @@ public class GameModeString
 		}
 		return MemoryExtensions.AsSpan(propertyString, num, num2 - num);
 	}
+
+	public static string ZoneFromPropertyString(string propertyString)
+	{
+		if (string.IsNullOrEmpty(propertyString))
+		{
+			return string.Empty;
+		}
+		int num = propertyString.IndexOf(';');
+		if (num >= 0)
+		{
+			return propertyString.Substring(0, num);
+		}
+		return propertyString;
+	}
 }

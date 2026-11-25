@@ -47,8 +47,9 @@ public class RandomCarveableObject : NetworkComponent
 
 	private bool HasAuthority => VoxelManager.HasAuthority;
 
-	private new void Start()
+	protected override void Start()
 	{
+		base.Start();
 		if ((object)world == null)
 		{
 			world = GetComponentInParent<VoxelWorld>();

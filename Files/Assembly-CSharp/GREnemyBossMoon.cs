@@ -256,8 +256,6 @@ public class GREnemyBossMoon : MonoBehaviour, IGameEntityComponent, IGameEntityS
 
 	private float waitInRetreat;
 
-	private double lastJumpEndtime;
-
 	public bool canChaseJump = true;
 
 	public float chaseJumpDistance = 5f;

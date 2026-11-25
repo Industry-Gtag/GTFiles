@@ -1,9 +1,6 @@
 using System;
 using System.Collections.Generic;
 using GorillaNetworking;
-using Oculus.Platform;
-using Oculus.Platform.Models;
-using Steamworks;
 using TMPro;
 using UnityEngine;
 using UnityEngine.Video;
@@ -43,8 +40,6 @@ public class SubscriptionKiosk : MonoBehaviour, ITouchScreenStation, IGorillaSli
 	private const string PURCHASE_CANCEL_KEY = "SUBKIOSKPURCHASE_CANCEL";
 
 	private const string PURCHASE_FAIL_KEY = "SUBKIOSKPURCHASE_FAIL";
-
-	private const string subSKU = "fan_club";
 
 	[Space]
 	[SerializeField]
@@ -117,8 +112,6 @@ public class SubscriptionKiosk : MonoBehaviour, ITouchScreenStation, IGorillaSli
 
 	private Dictionary<ScreenState, GameObject> screensByState;
 
-	private string steamOrderId = "";
-
 	[SerializeField]
 	private TextMeshPro subMenuPlayerName;
 
@@ -157,8 +150,6 @@ public class SubscriptionKiosk : MonoBehaviour, ITouchScreenStation, IGorillaSli
 	private ScreenState lastState;
 
 	private PurchaseResult lastPurchase;
-
-	private Callback<MicroTxnAuthorizationResponse_t> _steamMicroTransactionAuthorizationResponse;
 
 	public static bool ProcessingSubscriptionPurchase { get; set; }
 
@@ -207,7 +198,6 @@ public class SubscriptionKiosk : MonoBehaviour, ITouchScreenStation, IGorillaSli
 	{
 		GorillaSlicerSimpleManager.UnregisterSliceable(this);
 		SubscriptionManager.OnLocalSubscriptionData = (Action)Delegate.Remove(SubscriptionManager.OnLocalSubscriptionData, new Action(LocalSubscriptionDataUpdated));
-		_steamMicroTransactionAuthorizationResponse?.Unregister();
 	}
 
 	public void HandScanAborted()
@@ -497,103 +487,27 @@ public class SubscriptionKiosk : MonoBehaviour, ITouchScreenStation, IGorillaSli
 		purchaseResultText.text = result2;
 	}
 
-	private void ProcessSteamCallback(MicroTxnAuthorizationResponse_t callBackResponse)
-	{
-		if (callBackResponse.m_bAuthorized == 0)
-		{
-			Debug.Log("The user did not authorize the steam subscription purchase");
-			UpdatePurchaseResultScreen(PurchaseResult.Cancel);
-			UpdateState(ScreenState.SubscriptionPurchaseResult);
-		}
-		MothershipClientApiUnity.FinalizeSteamSubscriptionTransaction(steamOrderId, delegate
-		{
-			ProcessingSubscriptionPurchase = false;
-			UpdatePurchaseResultScreen(PurchaseResult.Success);
-			UpdateState(ScreenState.SubscriptionPurchaseResult);
-			SubscriptionManager.InitializePersonalSubscriptionData();
-		}, delegate(MothershipError Error, int Status)
-		{
-			ProcessingSubscriptionPurchase = false;
-			UpdatePurchaseResultScreen(PurchaseResult.Failure);
-			UpdateState(ScreenState.SubscriptionPurchaseResult);
-			Debug.LogError("SubscriptionKiosk could not finalzie STEAM iap. Trace ID " + Error.TraceId + ", Error Code: " + Error.MothershipErrorCode);
-		});
-	}
-
 	private void PurchaseSubscription(SubscriptionManager.SubscriptionTerm subTerm)
 	{
-		if (SteamManager.Initialized && _steamMicroTransactionAuthorizationResponse == null)
-		{
-			_steamMicroTransactionAuthorizationResponse = Callback<MicroTxnAuthorizationResponse_t>.Create(ProcessSteamCallback);
-		}
-		Debug.Log("Starting Steam Subscription Purchase");
-		int frequency = 1;
-		int priceInUSDCents = 999;
-		string frequencyUnit = "Month";
-		switch (subTerm)
-		{
-		case SubscriptionManager.SubscriptionTerm.MONTHLY:
-			frequency = 1;
-			priceInUSDCents = 999;
-			frequencyUnit = "Month";
-			break;
-		case SubscriptionManager.SubscriptionTerm.QUARTERLY:
-			frequency = 3;
-			priceInUSDCents = 2699;
-			frequencyUnit = "Month";
-			break;
-		case SubscriptionManager.SubscriptionTerm.SEMIANNUAL:
-			frequency = 6;
-			priceInUSDCents = 4999;
-			frequencyUnit = "Month";
-			break;
-		case SubscriptionManager.SubscriptionTerm.ANNUAL:
-			frequency = 1;
-			priceInUSDCents = 9499;
-			frequencyUnit = "Year";
-			break;
-		}
-		ProcessingSubscriptionPurchase = true;
-		MothershipClientApiUnity.InitSteamSubscriptionTransaction("40494", frequencyUnit, frequency, priceInUSDCents, delegate(InitSteamSubscriptionPurchaseResponse Response)
-		{
-			steamOrderId = Response.SteamOrderId;
-		}, delegate(MothershipError Error, int Status)
-		{
-			UpdatePurchaseResultScreen(PurchaseResult.Failure);
-			UpdateState(ScreenState.SubscriptionPurchaseResult);
-			Debug.LogError("SubscriptionKiosk could not start STEAM iap. Trace ID " + Error.TraceId + ", Error Code: " + Error.MothershipErrorCode);
-			ProcessingSubscriptionPurchase = false;
-		});
 		UpdateState(ScreenState.SubscriptionPurchaseInProgress);
+		if (!FanClubCheckout.Start(subTerm, OnPurchaseComplete))
+		{
+			UpdateState(ScreenState.PurchaseSubscription);
+		}
 	}
 
-	public void LaunchCheckoutFlowCallback(Message<Purchase> msg)
+	private void OnPurchaseComplete(FanClubCheckout.Result result)
 	{
-		Debug.Log($"SubscriptionKiosk Purchase result: {msg.Type}   isError: {msg.IsError}   Data: {msg.Data.ToString()}");
-		if (msg.IsError)
+		if (!(this == null))
 		{
-			Error error = msg.GetError();
-			if (error != null && error.Message != null && error.Message.Contains("cancel"))
+			UpdatePurchaseResultScreen(result switch
 			{
-				UpdatePurchaseResultScreen(PurchaseResult.Cancel);
-				return;
-			}
-			UpdatePurchaseResultScreen(PurchaseResult.Failure);
+				FanClubCheckout.Result.Success => PurchaseResult.Success, 
+				FanClubCheckout.Result.Cancel => PurchaseResult.Cancel, 
+				_ => PurchaseResult.Failure, 
+			});
+			UpdateState(ScreenState.SubscriptionPurchaseResult);
 		}
-		else
-		{
-			Purchase purchase = msg.GetPurchase();
-			if (purchase != null && !string.IsNullOrEmpty(purchase.Sku))
-			{
-				UpdatePurchaseResultScreen(PurchaseResult.Success);
-			}
-			else
-			{
-				UpdatePurchaseResultScreen(PurchaseResult.Failure);
-			}
-		}
-		SubscriptionManager.InitializePersonalSubscriptionData();
-		UpdateState(ScreenState.SubscriptionPurchaseResult);
 	}
 
 	public void LocalSubscriptionDataUpdated()

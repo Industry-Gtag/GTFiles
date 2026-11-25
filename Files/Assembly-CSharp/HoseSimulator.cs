@@ -50,6 +50,8 @@ public class HoseSimulator : MonoBehaviour, ISpawnable
 
 	private HoseSimulatorAnchors anchors;
 
+	private VRRig spawnedRig;
+
 	[SerializeField]
 	private TransferrableObject myHoldable;
 
@@ -65,7 +67,9 @@ public class HoseSimulator : MonoBehaviour, ISpawnable
 
 	void ISpawnable.OnSpawn(VRRig rig)
 	{
-		anchors = rig.cosmeticReferences.Get(startAnchorRef).GetComponent<HoseSimulatorAnchors>();
+		spawnedRig = rig;
+		anchors = null;
+		TryResolveAnchors();
 		if (skinnedMeshRenderer != null)
 		{
 			Bounds localBounds = skinnedMeshRenderer.localBounds;
@@ -75,6 +79,7 @@ public class HoseSimulator : MonoBehaviour, ISpawnable
 		hoseSectionLengths = new float[hoseBones.Length - 1];
 		hoseBonePositions = new Vector3[hoseBones.Length];
 		hoseBoneVelocities = new Vector3[hoseBones.Length];
+		totalHoseLength = 0f;
 		for (int i = 0; i < hoseSectionLengths.Length; i++)
 		{
 			float num = 1f;
@@ -83,8 +88,31 @@ public class HoseSimulator : MonoBehaviour, ISpawnable
 		}
 	}
 
+	private bool TryResolveAnchors()
+	{
+		if (anchors != null)
+		{
+			return true;
+		}
+		if (spawnedRig == null || spawnedRig.cosmeticReferences == null)
+		{
+			return false;
+		}
+		GameObject gameObject = spawnedRig.cosmeticReferences.Get(startAnchorRef);
+		if (gameObject == null)
+		{
+			return false;
+		}
+		anchors = gameObject.GetComponent<HoseSimulatorAnchors>();
+		return anchors != null;
+	}
+
 	private void LateUpdate()
 	{
+		if (hoseBonePositions == null || myHoldable == null || endAnchor == null || !TryResolveAnchors())
+		{
+			return;
+		}
 		if (myHoldable.InLeftHand())
 		{
 			isLeftHanded = true;

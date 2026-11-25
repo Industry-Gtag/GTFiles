@@ -43,6 +43,8 @@ public class ModIOManager : MonoBehaviour, ISteamCredentialProvider, IOculusCred
 
 	public const string FEATURED_MAP_TAG = "Featured";
 
+	public const string GEODES_MAP_TAG = "Geodes";
+
 	private const int MAX_FEATURED_MAPS_TO_PREFETCH = 50;
 
 	private const float MAX_PREFETCH_WAIT_PER_MAP_SECONDS = 600f;
@@ -258,6 +260,16 @@ public class ModIOManager : MonoBehaviour, ISteamCredentialProvider, IOculusCred
 
 	public static bool IsFeaturedMap(Mod mod)
 	{
+		return HasTag(mod, "Featured");
+	}
+
+	public static bool IsGeodesMap(Mod mod)
+	{
+		return HasTag(mod, "Geodes");
+	}
+
+	public static bool HasTag(Mod mod, string tagApiName)
+	{
 		if (mod?.Tags == null)
 		{
 			return false;
@@ -265,7 +277,7 @@ public class ModIOManager : MonoBehaviour, ISteamCredentialProvider, IOculusCred
 		ModTag[] tags = mod.Tags;
 		foreach (ModTag modTag in tags)
 		{
-			if (modTag != null && string.Equals(modTag.ApiName, "Featured", StringComparison.OrdinalIgnoreCase))
+			if (modTag != null && string.Equals(modTag.ApiName, tagApiName, StringComparison.OrdinalIgnoreCase))
 			{
 				return true;
 			}
@@ -1259,9 +1271,9 @@ public class ModIOManager : MonoBehaviour, ISteamCredentialProvider, IOculusCred
 		}
 	}
 
-	public async Task<(Error, string)> GetOculusUserId()
+	public Task<(Error, string)> GetOculusUserId()
 	{
-		return (Error.Unknown, "OCULUS is not enabled for this build");
+		return Task.FromResult((Error.Unknown, "OCULUS is not enabled for this build"));
 	}
 
 	public async Task<string> GetOculusAccessToken()

@@ -19,6 +19,10 @@ public class CustomMapsDetailsScreen : CustomMapsTerminalScreen
 	[SerializeField]
 	private Sprite hiddenMapLogo;
 
+	[Tooltip("Shown on maps that have the Geodes admin tag on mod.io")]
+	[SerializeField]
+	private GameObject geodesIcon;
+
 	[SerializeField]
 	private TMP_Text loadingText;
 
@@ -92,9 +96,6 @@ public class CustomMapsDetailsScreen : CustomMapsTerminalScreen
 	private string loadInTentString = "MUST BE INSIDE THE TENT TO LOAD THIS MAP.";
 
 	[SerializeField]
-	private string modAvailableString = "AVAILABLE";
-
-	[SerializeField]
 	private string mapAutoDownloadingString = "DOWNLOADING...";
 
 	[SerializeField]
@@ -105,9 +106,6 @@ public class CustomMapsDetailsScreen : CustomMapsTerminalScreen
 
 	[SerializeField]
 	private string mapInstallingProgressString = "INSTALLING:";
-
-	[SerializeField]
-	private string mapDownloadQueuedString = "DOWNLOAD QUEUED";
 
 	[SerializeField]
 	private string mapLoadingString = "LOADING:";
@@ -643,6 +641,7 @@ public class CustomMapsDetailsScreen : CustomMapsTerminalScreen
 		modStatusText.gameObject.SetActive(value: false);
 		modSubscriptionStatusText.gameObject.SetActive(value: false);
 		mapScreenshotImage.gameObject.SetActive(value: false);
+		SetGeodesIconVisible(visible: false);
 		hiddenRoomMapText.gameObject.SetActive(value: false);
 		outdatedText.gameObject.SetActive(value: false);
 		unloadPromptText.gameObject.SetActive(value: false);
@@ -686,9 +685,11 @@ public class CustomMapsDetailsScreen : CustomMapsTerminalScreen
 			modCreatorText.text = "";
 			mapScreenshotImage.sprite = hiddenMapLogo;
 			mapScreenshotImage.gameObject.SetActive(value: true);
+			SetGeodesIconVisible(visible: false);
 		}
 		else
 		{
+			SetGeodesIconVisible(ModIOManager.IsGeodesMap(currentMapMod));
 			modNameText.text = currentMapMod.Name;
 			modDescriptionText.text = currentMapMod.Description;
 			modCreatorLabelText.gameObject.SetActive(value: true);
@@ -755,6 +756,14 @@ public class CustomMapsDetailsScreen : CustomMapsTerminalScreen
 			modDescriptionText.gameObject.SetActive(value: false);
 			loadingMapLabelText.gameObject.SetActive(value: true);
 			loadingMapMessageText.gameObject.SetActive(value: true);
+		}
+	}
+
+	private void SetGeodesIconVisible(bool visible)
+	{
+		if (geodesIcon != null)
+		{
+			geodesIcon.SetActive(visible);
 		}
 	}
 

@@ -18,10 +18,6 @@ public class CosmeticCritterShadeFleeing : CosmeticCritter
 	private ModelSwap[] modelSwaps;
 
 	[Space]
-	[Tooltip("Despawn the Shade after it has fled (fleed?) this many meters.")]
-	[SerializeField]
-	private float fleeDistanceToDespawn = 10f;
-
 	[Tooltip("Flee away from the spotter at this many meters per second.")]
 	[SerializeField]
 	private float fleeSpeed;

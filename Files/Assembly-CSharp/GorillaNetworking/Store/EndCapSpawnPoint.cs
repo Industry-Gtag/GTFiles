@@ -5,6 +5,14 @@ namespace GorillaNetworking.Store;
 
 public class EndCapSpawnPoint : MonoBehaviour
 {
+	[Tooltip("Where BundleManager spawns this end cap's bundle stand. Defaults to this transform. On timed end caps, point this at an object under objectsToDisableWhenInactive (e.g. EndCap/Cosmetics) so the stand is hidden with it.")]
+	[SerializeField]
+	private Transform standParent;
+
+	[Tooltip("Show \"GET NOW!\" instead of the IAP price on this end cap's purchase buttons, and hide the fan club (VIM) price label.")]
+	[SerializeField]
+	private bool hidePurchasePrice;
+
 	[Tooltip("Optional. When set, this end cap is only live while the TitleDataActivation's title data window is active. Use a TitleDataActivation with no children of its own, since it toggles all of its children.")]
 	[SerializeField]
 	private TitleDataActivation titleDataActivation;
@@ -24,6 +32,10 @@ public class EndCapSpawnPoint : MonoBehaviour
 	[Tooltip("Other pressable buttons disabled while outside the active date range.")]
 	[SerializeField]
 	private GorillaPressableButton[] buttonsToDisableWhenInactive;
+
+	[Tooltip("While inside the active date range, put this end cap's bundles in a free slot on the try on stand. Bundles only sold on timed end caps are always hidden from the try on stand while outside it.")]
+	[SerializeField]
+	private bool addBundlesToTryOnStand = true;
 
 	[Tooltip("Creator code terminal for this end cap. Auto-filled from children (including inactive) when empty.")]
 	[SerializeField]
@@ -47,6 +59,20 @@ public class EndCapSpawnPoint : MonoBehaviour
 		}
 	}
 
+	public Transform StandParent
+	{
+		get
+		{
+			if (!(standParent != null))
+			{
+				return base.transform;
+			}
+			return standParent;
+		}
+	}
+
+	public bool HidesPurchasePrice => hidePurchasePrice;
+
 	public CreatorCodeTerminal CreatorCodeTerminal => creatorCodeTerminal;
 
 	public bool UsesCreatorCodeTerminal => useCreatorCodeTerminal;
@@ -60,6 +86,14 @@ public class EndCapSpawnPoint : MonoBehaviour
 		}
 		titleDataActivation.OnActivationStateChanged += OnTitleDataActivationChanged;
 		ApplyActiveState(titleDataActivation.IsActive);
+	}
+
+	private void Start()
+	{
+		if (HasTitleDataGate)
+		{
+			UpdateTryOnBundles(titleDataActivation.IsActive);
+		}
 	}
 
 	private void OnDisable()
@@ -81,7 +115,20 @@ public class EndCapSpawnPoint : MonoBehaviour
 		SetPurchaseButtonsLocked(!isActive);
 		SetButtonsEnabled(isActive);
 		SetCreatorCodeTerminalActive(isActive);
+		UpdateTryOnBundles(isActive);
 		ApplyTextSwaps(isActive);
+	}
+
+	private void UpdateTryOnBundles(bool isActive)
+	{
+		if (!(BundleManager.instance == null))
+		{
+			BundleStand[] componentsInChildren = GetComponentsInChildren<BundleStand>(includeInactive: true);
+			for (int i = 0; i < componentsInChildren.Length; i++)
+			{
+				BundleManager.instance.SetTimedTryOnBundle(componentsInChildren[i]._bundleDataReference, this, isActive, addBundlesToTryOnStand);
+			}
+		}
 	}
 
 	private void SetCreatorCodeTerminalActive(bool isActive)

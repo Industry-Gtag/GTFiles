@@ -33,8 +33,6 @@ internal class PlayerCosmeticsSystem : MonoBehaviour, ITickSystemPre
 
 	private string tempCosmetics;
 
-	private NetPlayer playerTemp;
-
 	private RigContainer tempRC;
 
 	private List<string> inventory;

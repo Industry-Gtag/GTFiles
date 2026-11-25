@@ -73,8 +73,9 @@ internal class GorillaNetworkTransform : NetworkComponent, ITickSystemTick
 		maxDistanceSquare = maxDistance * maxDistance;
 	}
 
-	private new void OnEnable()
+	internal override void OnEnable()
 	{
+		base.OnEnable();
 		m_firstTake = true;
 		if (clampToSpawn)
 		{
@@ -83,8 +84,9 @@ internal class GorillaNetworkTransform : NetworkComponent, ITickSystemTick
 		TickSystem<object>.AddTickCallback(this);
 	}
 
-	private new void OnDisable()
+	internal override void OnDisable()
 	{
+		base.OnDisable();
 		TickSystem<object>.RemoveTickCallback(this);
 	}
 

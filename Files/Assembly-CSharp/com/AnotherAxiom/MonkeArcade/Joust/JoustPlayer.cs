@@ -35,7 +35,11 @@ public class JoustPlayer : MonoBehaviour
 		else
 		{
 			velocity.y = Mathf.Max(velocity.y - Time.deltaTime * 0.0001f, -0.001f);
-			for (int i = 0; i < Physics2D.RaycastNonAlloc(base.transform.position, velocity.normalized, raycastHitResults, velocity.magnitude); i++)
+			ContactFilter2D contactFilter = default(ContactFilter2D);
+			contactFilter.SetLayerMask(-5);
+			contactFilter.useTriggers = Physics2D.queriesHitTriggers;
+			int num = Physics2D.Raycast(base.transform.position, velocity.normalized, contactFilter, raycastHitResults, velocity.magnitude);
+			for (int i = 0; i < num; i++)
 			{
 				if (raycastHitResults[i].collider.TryGetComponent<JoustTerrain>(out var component))
 				{

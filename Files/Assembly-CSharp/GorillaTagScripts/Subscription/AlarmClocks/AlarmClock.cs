@@ -20,12 +20,6 @@ public sealed class AlarmClock : MonoBehaviour
 	[SerializeField]
 	private GameObject _alarmClockOff;
 
-	[SerializeField]
-	private float _onTime = 1f;
-
-	[SerializeField]
-	private float _offTime = 0.2f;
-
 	public UnityEvent OnActivate;
 
 	public UnityEvent OnDeactivate;

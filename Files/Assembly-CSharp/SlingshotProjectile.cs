@@ -89,6 +89,8 @@ public class SlingshotProjectile : MonoBehaviour
 
 	private bool particleLaunched;
 
+	private bool isDeactivating;
+
 	private float timeCreated;
 
 	private Rigidbody projectileRigidbody;
@@ -138,6 +140,18 @@ public class SlingshotProjectile : MonoBehaviour
 	private MonkeGravityController gravityController;
 
 	public Vector3 launchPosition { get; private set; }
+
+	public bool IsLaunched
+	{
+		get
+		{
+			if (particleLaunched)
+			{
+				return !isDeactivating;
+			}
+			return false;
+		}
+	}
 
 	public event ProjectileImpactEvent OnImpact;
 
@@ -202,7 +216,11 @@ public class SlingshotProjectile : MonoBehaviour
 
 	public void Deactivate()
 	{
-		StartCoroutine(DeactivateCoroutine());
+		if (!isDeactivating)
+		{
+			isDeactivating = true;
+			StartCoroutine(DeactivateCoroutine());
+		}
 	}
 
 	private IEnumerator DeactivateCoroutine()
@@ -303,6 +321,7 @@ public class SlingshotProjectile : MonoBehaviour
 	{
 		timeCreated = 0f;
 		particleLaunched = false;
+		isDeactivating = false;
 		SlingshotProjectileManager.RegisterSP(this);
 	}
 

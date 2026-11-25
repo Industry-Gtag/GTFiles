@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Threading.Tasks;
 using GorillaNetworking;
 using GorillaTagScripts;
@@ -28,8 +29,6 @@ public class BananaMail : MonoBehaviour
 
 		private DateTime? dtExpires;
 
-		public int Id => (subject + body + sent).GetHashCode();
-
 		public string Subject
 		{
 			get
@@ -54,6 +53,18 @@ public class BananaMail : MonoBehaviour
 			}
 		}
 
+		[JsonIgnore]
+		public string SubjectKey { get; set; }
+
+		[JsonIgnore]
+		public string BodyKey { get; set; }
+
+		[JsonIgnore]
+		public string[] HighlightPhrases { get; set; }
+
+		[JsonIgnore]
+		public bool OffersFanClubSignUp { get; set; }
+
 		public DateTime Sent
 		{
 			get
@@ -64,7 +75,7 @@ public class BananaMail : MonoBehaviour
 				}
 				try
 				{
-					dtSent = DateTime.Parse(sent);
+					dtSent = DateTime.Parse(sent, CultureInfo.InvariantCulture);
 				}
 				catch
 				{
@@ -88,7 +99,7 @@ public class BananaMail : MonoBehaviour
 				}
 				try
 				{
-					dtExpires = DateTime.Parse(expires);
+					dtExpires = DateTime.Parse(expires, CultureInfo.InvariantCulture);
 				}
 				catch
 				{
@@ -100,6 +111,11 @@ public class BananaMail : MonoBehaviour
 			{
 				dtExpires = value;
 			}
+		}
+
+		public int GetId()
+		{
+			return (subject + body + sent).GetHashCode();
 		}
 
 		public int CompareTo(BananaMailMessage bmm)
@@ -122,11 +138,32 @@ public class BananaMail : MonoBehaviour
 	[SerializeField]
 	private BananaMailMessage[] messages;
 
+	[Tooltip("Editor only: pretend the fan club (VIM) subscription ended, so the goodbye mail shows when playing")]
+	[SerializeField]
+	private bool testFanClubEnded;
+
+	[Tooltip("Editor only: how many days ago the pretend subscription ended (the goodbye mail's sent date)")]
+	[SerializeField]
+	[Min(0f)]
+	private int testFanClubEndedDaysAgo = 3;
+
+	[Tooltip("Editor only: add a long lorem ipsum message, to check how a long body fits on the computer screen")]
+	[SerializeField]
+	private bool testLongMessage;
+
+	[Tooltip("Editor only: show the Steam details before the fan club checkout on the computer, as on a Steam build")]
+	[SerializeField]
+	private bool testSteamWarning;
+
 	public static BananaMailMessage[] Messages;
 
 	private static BananaMailStatus _status;
 
 	public static int Unread;
+
+	private const string ReadMessagesPrefKey = "BananaMailRead";
+
+	private static readonly HashSet<int> readMessageIds = new HashSet<int>();
 
 	public static BananaMailStatus Status
 	{
@@ -143,48 +180,43 @@ public class BananaMail : MonoBehaviour
 
 	public static event Action BananaMailStatusChange;
 
+	public static event Action BananaMailUnreadChange;
+
 	[RuntimeInitializeOnLoadMethod]
 	private static void Init()
 	{
 		Unread = 0;
 		Messages = null;
 		_status = BananaMailStatus.none;
+		readMessageIds.Clear();
 	}
 
-	public static List<int> GetReadMessages()
+	private static void LoadReadMessageIds()
 	{
-		List<int> list = new List<int>();
-		string text = PlayerPrefs.GetString("BananaMailRead", string.Empty);
-		if (text.Length > 0)
+		readMessageIds.Clear();
+		string[] array = PlayerPrefs.GetString("BananaMailRead", string.Empty).Split(',', StringSplitOptions.RemoveEmptyEntries);
+		for (int i = 0; i < array.Length; i++)
 		{
-			string[] array = text.Split(',');
-			for (int i = 0; i < array.Length; i++)
+			if (int.TryParse(array[i], NumberStyles.Integer, CultureInfo.InvariantCulture, out var result))
 			{
-				list.Add(int.Parse(array[i]));
+				readMessageIds.Add(result);
 			}
 		}
-		return list;
+	}
+
+	private static void SaveReadMessageIds()
+	{
+		PlayerPrefs.SetString("BananaMailRead", string.Join(",", readMessageIds));
 	}
 
 	public static void MarkMessageRead(int id)
 	{
-		string text = PlayerPrefs.GetString("BananaMailRead", string.Empty);
-		text = ((text.Length != 0) ? $"{text},{id}" : id.ToString());
-		PlayerPrefs.SetString("BananaMailRead", text);
-	}
-
-	public static (int, string) DisplayMessage(int index)
-	{
-		if (Status != BananaMailStatus.ready)
+		if (Status == BananaMailStatus.ready && readMessageIds.Add(id))
 		{
-			return (index, "NO BANANA\n\nTRY AGAIN LATER.\n\n");
+			Unread = Math.Max(0, Unread - 1);
+			BananaMailUnreadChange?.Invoke();
+			SaveReadMessageIds();
 		}
-		if (index < Messages.Length)
-		{
-			MarkMessageRead(Messages[index].Id);
-			return (index + 1, $"BANAN@MAIL ニ MSG {Messages.Length - index}/{Messages.Length}\nSENT: {Messages[index].Sent.ToShortDateString()}\nSUBJ: {Messages[index].Subject}\n\n{Messages[index].Body}");
-		}
-		return (0, "HAVE A BANANA!            \n\n                  *       \n                   #*     \n                   # #    \n                   #  *   \n                  #  #    \n                 *  #     \n                # #       \n                #*        \n");
 	}
 
 	private async void Start()
@@ -198,8 +230,22 @@ public class BananaMail : MonoBehaviour
 		tdCallsOut++;
 		PlayFabTitleDataCache.Instance.GetTitleData(titleDataKey, delegate(string data)
 		{
-			messages.AddRange(JsonConvert.DeserializeObject<BananaMailMessage[]>(data));
-			tdCallsOut--;
+			try
+			{
+				BananaMailMessage[] array = JsonConvert.DeserializeObject<BananaMailMessage[]>(data);
+				if (array != null)
+				{
+					messages.AddRange(array);
+				}
+			}
+			catch (Exception ex)
+			{
+				Debug.LogError("BananaMail :: Start :: Couldn't read the " + titleDataKey + " title data: " + ex.Message);
+			}
+			finally
+			{
+				tdCallsOut--;
+			}
 		}, delegate(PlayFabError err)
 		{
 			Debug.Log($"BananaMail :: Start :: TitleData Error {err}");
@@ -215,33 +261,46 @@ public class BananaMail : MonoBehaviour
 			messages.Add(new BananaMailMessage
 			{
 				Subject = "WE'LL MISS YOU!!",
-				Body = "Hello Very Important Monke!\n\nLooks like your Gorilla Tag Fan Club subscription has ended. I hope you had a good time and I'd love to see you come back soon! You can sign up any time at any GTFC Kiosk.\n\n   -Lemming",
+				Body = "Hello Very Important Monke!\n\nLooks like your Gorilla Tag Fan Club subscription has ended. I hope you had a good time and I'd love to see you come back soon! Sign up again by pressing OPTION 1 or at any GTFC Kiosk. -Lemming",
+				SubjectKey = "MAIL_FAN_CLUB_ENDED_SUBJECT",
+				BodyKey = "MAIL_FAN_CLUB_ENDED_BODY",
+				HighlightPhrases = new string[1] { "OPTION 1" },
+				OffersFanClubSignUp = true,
 				Sent = subscriptionDetails.subscriptionActiveUntilDate,
 				Expires = subscriptionDetails.subscriptionActiveUntilDate.AddYears(1)
 			});
 		}
+		messages.RemoveAll(BadDates);
 		Unread = 0;
-		List<int> readMessages = GetReadMessages();
-		List<int> list = new List<int>();
+		LoadReadMessageIds();
+		HashSet<int> hashSet = new HashSet<int>();
 		for (int num = messages.Count - 1; num >= 0; num--)
 		{
-			if (!readMessages.Contains(messages[num].Id))
+			int id = messages[num].GetId();
+			if (readMessageIds.Contains(id))
 			{
-				Unread++;
+				hashSet.Add(id);
 			}
 			else
 			{
-				list.Add(messages[num].Id);
+				Unread++;
 			}
 		}
-		string text = string.Empty;
-		for (int num2 = 0; num2 < list.Count; num2++)
-		{
-			text = ((text.Length != 0) ? $"{text},{list[num2]}" : list[num2].ToString());
-		}
-		PlayerPrefs.SetString("BananaMailRead", text);
+		readMessageIds.Clear();
+		readMessageIds.UnionWith(hashSet);
+		SaveReadMessageIds();
 		messages.Sort();
-		Messages = (this.messages = messages.ToArray());
+		Messages = messages.ToArray();
 		Status = BananaMailStatus.ready;
+	}
+
+	private static bool BadDates(BananaMailMessage m)
+	{
+		DateTime serverTime = GorillaComputer.instance.GetServerTime();
+		if (!(m.Expires < serverTime))
+		{
+			return m.Sent > serverTime;
+		}
+		return true;
 	}
 }

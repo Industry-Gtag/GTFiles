@@ -6,6 +6,7 @@ using GorillaLocomotion;
 using GorillaNetworking;
 using Photon.Pun;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 [AddComponentMenu("GorillaTag/Ghost Reactor/GR Player")]
 public class GRPlayer : MonoBehaviourTick
@@ -995,8 +996,24 @@ public class GRPlayer : MonoBehaviourTick
 	{
 		vrRigs.Clear();
 		VRRigCache.Instance.GetAllUsedRigs(vrRigs);
-		GorillaTelemetry.GhostReactorGameEnd(gameId, ShiftCredits, totalCoresCollectedByPlayer, totalCoresCollectedByGroup, totalCoresSpentByPlayer, totalCoresSpentByGroup, totalGatesUnlocked, totalDeaths, totalItemsPurchased, lastShiftCut, isShiftActuallyEnding, timeIntoShiftAtJoin, (float)(PhotonNetwork.Time - (double)gameStartTime), wasPlayerInAtShiftStart, zoneClearReason, maxNumberOfPlayersInShift, vrRigs.Count + 1, totalItemTypesHeldThisShift, totalRevives, numShiftsPlayed);
+		if (GhostReactorDrillSceneIsLoaded())
+		{
+			GorillaTelemetry.GhostReactorGameEnd(gameId, ShiftCredits, totalCoresCollectedByPlayer, totalCoresCollectedByGroup, totalCoresSpentByPlayer, totalCoresSpentByGroup, totalGatesUnlocked, totalDeaths, totalItemsPurchased, lastShiftCut, isShiftActuallyEnding, timeIntoShiftAtJoin, (float)(PhotonNetwork.Time - (double)gameStartTime), wasPlayerInAtShiftStart, zoneClearReason, maxNumberOfPlayersInShift, vrRigs.Count + 1, totalItemTypesHeldThisShift, totalRevives, numShiftsPlayed);
+		}
 		isFirstShift = true;
+	}
+
+	private static bool GhostReactorDrillSceneIsLoaded()
+	{
+		for (int i = 0; i < SceneManager.sceneCount; i++)
+		{
+			Scene sceneAt = SceneManager.GetSceneAt(i);
+			if (sceneAt.isLoaded && sceneAt.name == "GhostReactorDrill")
+			{
+				return true;
+			}
+		}
+		return false;
 	}
 
 	public void SendFloorStartedTelemetry(float timeIntoShift, bool wasPlayerInAtStart, int currentFloor, string floorPreset, string floorModifier)

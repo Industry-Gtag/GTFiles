@@ -51,8 +51,6 @@ public class SimpleTransformAnimatorCosmetic : MonoBehaviour, ITickSystemTick
 
 	private float posBlendTarget;
 
-	private bool isAnimating;
-
 	public bool TickRunning { get; set; }
 
 	private void DebugToggle()
@@ -102,13 +100,11 @@ public class SimpleTransformAnimatorCosmetic : MonoBehaviour, ITickSystemTick
 		{
 			TickSystem<object>.AddCallbackTarget(this);
 			TickRunning = true;
-			isAnimating = true;
 		}
 		else if (!flag && TickRunning)
 		{
 			TickSystem<object>.RemoveCallbackTarget(this);
 			TickRunning = false;
-			isAnimating = false;
 		}
 	}
 

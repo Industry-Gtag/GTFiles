@@ -33,11 +33,17 @@ public sealed class AlarmClockManager : MonoBehaviour
 
 	public const string SaveDataKey = "AlarmClock";
 
+	private const float ZoneRestoreTimeout = 10f;
+
 	[SerializeField]
 	private string _loadingMessage = "";
 
 	[SerializeField]
 	private float _wrongWarpTolerance = 0.1f;
+
+	[Tooltip("Real-time seconds the wake-up may spend on its loading overlay before it gives up, clears the alarm clock and returns the player to the default spawn. Time behind another window (EULA, k-ID, etc) doesn't count.")]
+	[SerializeField]
+	private float _wakeUpTimeout = 45f;
 
 	[SerializeField]
 	private AlarmClockData[] _clockData = new AlarmClockData[0];
@@ -55,6 +61,12 @@ public sealed class AlarmClockManager : MonoBehaviour
 	private AlarmClock _activeClock;
 
 	private Dictionary<string, object> _telemetryDict;
+
+	private Coroutine _wakeUpCoroutine;
+
+	private bool _wakeUpCommitted;
+
+	private GTZone[] _zonesBeforeWakeUp;
 
 	private float _trackingEndTime;
 
@@ -91,7 +103,7 @@ public sealed class AlarmClockManager : MonoBehaviour
 				_activeClockData = clockData;
 				_teleportTarget = clockData.SpawnPoint;
 				SendTelemetryEvent("wake_begin", ActiveKey);
-				StartCoroutine(PerformWakeUpSequence());
+				_wakeUpCoroutine = StartCoroutine(PerformWakeUpSequence());
 				return;
 			}
 		}
@@ -114,6 +126,7 @@ public sealed class AlarmClockManager : MonoBehaviour
 			yield return null;
 		}
 		PrivateUIRoom.ForceStartOverlay(PrivateUIRoom.OverlaySource.AlarmClock, _loadingMessage);
+		StartCoroutine(WakeUpTimeout());
 		PersistLog.Log($"[AC][F{Time.frameCount}] Waiting for feature flags.");
 		while (true)
 		{
@@ -157,6 +170,7 @@ public sealed class AlarmClockManager : MonoBehaviour
 				{
 					PersistLog.Log($"[AC][F{Time.frameCount}] Skipped zone load check.");
 				}
+				_wakeUpCommitted = true;
 				XSceneRef[] objects = _activeClockData.Objects;
 				foreach (XSceneRef xSceneRef in objects)
 				{
@@ -181,8 +195,7 @@ public sealed class AlarmClockManager : MonoBehaviour
 					GTPlayer.Instance.TeleportTo(_teleportTarget, matchDestinationRotation: true, maintainVelocity: false);
 					yield return null;
 				}
-				GTPlayer.Instance.disableMovement = false;
-				PrivateUIRoom.StopForcedOverlay(PrivateUIRoom.OverlaySource.AlarmClock);
+				ReleaseOverlay();
 				OnWakeUp?.Invoke();
 				_activeClockData.OnSpawn?.Invoke();
 				SendTelemetryEvent("wake_complete", ActiveKey);
@@ -198,9 +211,8 @@ public sealed class AlarmClockManager : MonoBehaviour
 					PersistLog.Log($"[AC][F{Time.frameCount}] AlarmClockManager failed wake up because login failed.");
 				}
 				SendTelemetryEvent("wake_abort", ActiveKey);
-				PersistLog.Log("VIM Only destination [" + ActiveKey + "] and no subscription.  Clearing clock data.");
-				PlayerPrefs.SetString("AlarmClock", "");
-				StartCoroutine(ClearUnsubPlayerData());
+				PersistLog.Log("VIM Only destination [" + ActiveKey + "] and no subscription.  Clearing clock data and warping home.");
+				StartCoroutine(ClearClockAndReturnToDefaultSpawn());
 			}
 		}
 		else
@@ -209,8 +221,40 @@ public sealed class AlarmClockManager : MonoBehaviour
 			SendTelemetryEvent("wake_abort_disabled", ActiveKey);
 		}
 		Initialized = true;
-		GTPlayer.Instance.disableMovement = false;
+		ReleaseOverlay();
+	}
+
+	private static void ReleaseOverlay()
+	{
 		PrivateUIRoom.StopForcedOverlay(PrivateUIRoom.OverlaySource.AlarmClock);
+		if (GTPlayer.hasInstance && !PrivateUIRoom.GetInOverlay())
+		{
+			GTPlayer.Instance.disableMovement = false;
+		}
+	}
+
+	private IEnumerator WakeUpTimeout()
+	{
+		float elapsed = 0f;
+		while (elapsed < _wakeUpTimeout)
+		{
+			yield return null;
+			if (Initialized || _wakeUpCommitted)
+			{
+				yield break;
+			}
+			if (!PrivateUIRoom.IsOverlayHeldByOthers(PrivateUIRoom.OverlaySource.AlarmClock))
+			{
+				elapsed += Time.unscaledDeltaTime;
+			}
+		}
+		if (_wakeUpCoroutine != null)
+		{
+			StopCoroutine(_wakeUpCoroutine);
+		}
+		PersistLog.Log($"[AC][F{Time.frameCount}] Wake-up to [{ActiveKey}] timed out after {_wakeUpTimeout}s.  Clearing clock data and warping home.");
+		SendTelemetryEvent("wake_timeout", ActiveKey);
+		yield return ClearClockAndReturnToDefaultSpawn();
 	}
 
 	public static void ToggleAlarmClock(AlarmClock clock)
@@ -320,8 +364,24 @@ public sealed class AlarmClockManager : MonoBehaviour
 
 	private void RequestLoadZones()
 	{
+		if (_zonesBeforeWakeUp == null)
+		{
+			_zonesBeforeWakeUp = GetActiveZones().ToArray();
+		}
 		PersistLog.Log(string.Format("[AC][F{0}] Requesting zones: {1}", Time.frameCount, string.Join(", ", _activeClockData.Zones)));
 		ZoneManagement.SetActiveZones(_activeClockData.Zones);
+	}
+
+	private static bool ZoneScenesLoaded(GTZone[] zones)
+	{
+		foreach (GTZone gtZone in zones)
+		{
+			if (!ZoneManagement.instance.IsSceneLoaded(gtZone))
+			{
+				return false;
+			}
+		}
+		return true;
 	}
 
 	private AlarmClockData GetClockData(string key)
@@ -367,14 +427,29 @@ public sealed class AlarmClockManager : MonoBehaviour
 		}
 	}
 
-	private IEnumerator ClearUnsubPlayerData()
+	private IEnumerator ClearClockAndReturnToDefaultSpawn()
 	{
-		PersistLog.Log("No subscription, warping home.");
 		PlayerPrefs.SetString("AlarmClock", "");
-		GTPlayer.Instance.TeleportTo(_defaultSpawn, matchDestinationRotation: true, maintainVelocity: false);
+		PlayerPrefs.Save();
+		ActiveKey = "";
+		OnActiveKeyChanged?.Invoke(ActiveKey);
+		GTZone[] zonesBeforeWakeUp = _zonesBeforeWakeUp;
+		if (zonesBeforeWakeUp != null && zonesBeforeWakeUp.Length > 0)
+		{
+			PersistLog.Log(string.Format("[AC][F{0}] Restoring zones: {1}", Time.frameCount, string.Join(", ", _zonesBeforeWakeUp)));
+			ZoneManagement.SetActiveZones(_zonesBeforeWakeUp);
+			float giveUpTime = Time.realtimeSinceStartup + 10f;
+			while (!ZoneScenesLoaded(_zonesBeforeWakeUp) && Time.realtimeSinceStartup < giveUpTime)
+			{
+				yield return null;
+			}
+		}
+		if (GTPlayer.hasInstance)
+		{
+			GTPlayer.Instance.TeleportTo(_defaultSpawn, matchDestinationRotation: true, maintainVelocity: false);
+		}
 		Initialized = true;
 		yield return null;
-		GTPlayer.Instance.disableMovement = false;
-		PrivateUIRoom.StopForcedOverlay(PrivateUIRoom.OverlaySource.AlarmClock);
+		ReleaseOverlay();
 	}
 }

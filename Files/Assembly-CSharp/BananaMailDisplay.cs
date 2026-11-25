@@ -10,16 +10,21 @@ public class BananaMailDisplay : MonoBehaviour
 	[SerializeField]
 	private UnityEvent HighlightOff;
 
+	[SerializeField]
+	private float blinkRate = 2f;
+
 	private void OnEnable()
 	{
 		BananaMail_BananaMailStatusChange();
 		BananaMail.BananaMailStatusChange += BananaMail_BananaMailStatusChange;
+		BananaMail.BananaMailUnreadChange += BananaMail_BananaMailStatusChange;
+		blinkRate = Mathf.Max(blinkRate, 1f);
 	}
 
 	private void BananaMail_BananaMailStatusChange()
 	{
 		StopAllCoroutines();
-		if (BananaMail.Status == BananaMail.BananaMailStatus.ready)
+		if (BananaMail.Status == BananaMail.BananaMailStatus.ready && BananaMail.Unread > 0)
 		{
 			StartCoroutine(cr_Blink(BananaMail.Unread));
 		}
@@ -36,7 +41,7 @@ public class BananaMailDisplay : MonoBehaviour
 				HighlightOff?.Invoke();
 				yield return new WaitForSeconds(0.2f);
 			}
-			yield return new WaitForSeconds(2f);
+			yield return new WaitForSeconds(blinkRate);
 		}
 	}
 
@@ -44,11 +49,13 @@ public class BananaMailDisplay : MonoBehaviour
 	{
 		StopAllCoroutines();
 		BananaMail.BananaMailStatusChange -= BananaMail_BananaMailStatusChange;
+		BananaMail.BananaMailUnreadChange -= BananaMail_BananaMailStatusChange;
 	}
 
 	private void OnDestroy()
 	{
 		StopAllCoroutines();
 		BananaMail.BananaMailStatusChange -= BananaMail_BananaMailStatusChange;
+		BananaMail.BananaMailUnreadChange -= BananaMail_BananaMailStatusChange;
 	}
 }

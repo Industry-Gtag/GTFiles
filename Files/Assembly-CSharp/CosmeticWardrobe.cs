@@ -68,8 +68,6 @@ public class CosmeticWardrobe : MonoBehaviour
 
 	private static int startingDisplayIndex = 0;
 
-	private static int selectedOutfitIndex = 0;
-
 	private static Action OnWardrobeUpdateCategories;
 
 	private static Action OnWardrobeUpdateDisplays;

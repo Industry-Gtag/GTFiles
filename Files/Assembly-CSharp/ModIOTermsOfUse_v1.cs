@@ -114,9 +114,9 @@ public class ModIOTermsOfUse_v1 : MonoBehaviour
 		return num;
 	}
 
-	public async Task<bool> UpdateTextWithFullTerms()
+	public Task<bool> UpdateTextWithFullTerms()
 	{
-		return true;
+		return Task.FromResult(result: true);
 	}
 
 	private string GetStringForListItemIdx_LowerAlpha(int idx)

@@ -82,15 +82,11 @@ public class PickupableCosmetic : PickupableVariant
 
 	private float brokenTime = -1f;
 
-	private VRRig cachedLocalRig;
-
 	private HoldableObject holdableParent;
 
 	private TransferrableObject transferrableParent;
 
 	private RigOwnedPhysicsBody rigOwnedPhysicsBody;
-
-	private double throwSettledTime = -1.0;
 
 	private int landingSide;
 
@@ -123,6 +119,18 @@ public class PickupableCosmetic : PickupableVariant
 	private static readonly Dictionary<int, Vector3[]> directionCache = new Dictionary<int, Vector3[]>();
 
 	private static readonly Vector3[] tmpEmpty = Array.Empty<Vector3>();
+
+	public VRRig OwnerRig
+	{
+		get
+		{
+			if (!(holdableParent is TransferrableObject transferrableObject))
+			{
+				return null;
+			}
+			return transferrableObject.ownerRig;
+		}
+	}
 
 	private void Awake()
 	{
@@ -259,37 +267,45 @@ public class PickupableCosmetic : PickupableVariant
 		if (autoPickupDistance > 0f && transferrableParent != null && (transferrableParent.ownerRig.transform.position - base.transform.position).IsLongerThan(autoPickupDistance))
 		{
 			Pickup();
-		}
-		if (placedOnFloor || !base.enabled)
-		{
-			return;
-		}
-		frameCounter++;
-		if (frameCounter % stepEveryNFrames != 0)
-		{
-			return;
-		}
-		float maxDistance = RaycastCheckDist * scale;
-		int value = floorLayerMask.value;
-		Vector3[] cachedDirections = GetCachedDirections(RaycastChecksMax);
-		int num = 0;
-		while (num < raysPerStep && currentRayIndex < cachedDirections.Length)
-		{
-			Vector3 vector = cachedDirections[currentRayIndex];
-			currentRayIndex++;
-			num++;
-			if (Physics.Raycast(GetSafeRayOrigin(raycastOrigin.position, vector), vector, out var hitInfo, maxDistance, value, QueryTriggerInteraction.Ignore) && (!dontStickToWall || !(Vector3.Angle(hitInfo.normal, Vector3.up) >= 40f)))
+			ThrowablePickupableCosmetic throwablePickupableCosmetic2 = transferrableParent as ThrowablePickupableCosmetic;
+			if ((bool)throwablePickupableCosmetic2)
 			{
-				SettleBanner(hitInfo);
-				OnPlacedShared?.Invoke();
-				placedOnFloor = true;
-				placedOnFloorTime = Time.time;
-				break;
+				throwablePickupableCosmetic2.OnReturnToDockPositionShared?.Invoke();
 			}
 		}
-		if (currentRayIndex >= cachedDirections.Length)
+		else
 		{
-			currentRayIndex = 0;
+			if (placedOnFloor || !base.enabled)
+			{
+				return;
+			}
+			frameCounter++;
+			if (frameCounter % stepEveryNFrames != 0)
+			{
+				return;
+			}
+			float maxDistance = RaycastCheckDist * scale;
+			int value = floorLayerMask.value;
+			Vector3[] cachedDirections = GetCachedDirections(RaycastChecksMax);
+			int num = 0;
+			while (num < raysPerStep && currentRayIndex < cachedDirections.Length)
+			{
+				Vector3 vector = cachedDirections[currentRayIndex];
+				currentRayIndex++;
+				num++;
+				if (Physics.Raycast(GetSafeRayOrigin(raycastOrigin.position, vector), vector, out var hitInfo, maxDistance, value, QueryTriggerInteraction.Ignore) && (!dontStickToWall || !(Vector3.Angle(hitInfo.normal, Vector3.up) >= 40f)))
+				{
+					SettleBanner(hitInfo);
+					OnPlacedShared?.Invoke();
+					placedOnFloor = true;
+					placedOnFloorTime = Time.time;
+					break;
+				}
+			}
+			if (currentRayIndex >= cachedDirections.Length)
+			{
+				currentRayIndex = 0;
+			}
 		}
 	}
 

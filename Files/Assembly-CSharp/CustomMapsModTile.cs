@@ -24,6 +24,10 @@ public class CustomMapsModTile : CustomMapsScreenTouchPoint
 	[SerializeField]
 	private TMP_Text _playerCountText;
 
+	[Tooltip("Shown on maps that have the Geodes admin tag on mod.io")]
+	[SerializeField]
+	private GameObject geodesIcon;
+
 	private const float LOGO_WIDTH = 320f;
 
 	private const float LOGO_HEIGHT = 180f;
@@ -37,8 +41,6 @@ public class CustomMapsModTile : CustomMapsScreenTouchPoint
 	private bool isDownloadingThumbnail;
 
 	private bool newDownloadRequest;
-
-	private bool isActive;
 
 	public string PlayerCountText
 	{
@@ -59,6 +61,15 @@ public class CustomMapsModTile : CustomMapsScreenTouchPoint
 		base.Awake();
 		defaultLogo = touchPointRenderer.sprite;
 		highlight.SetActive(value: false);
+		SetGeodesIconVisible(visible: false);
+	}
+
+	private void SetGeodesIconVisible(bool visible)
+	{
+		if (geodesIcon != null)
+		{
+			geodesIcon.SetActive(visible);
+		}
 	}
 
 	public void ShowTileText(bool show, bool useMapName)
@@ -88,7 +99,6 @@ public class CustomMapsModTile : CustomMapsScreenTouchPoint
 
 	public void ActivateTile(bool useMapName)
 	{
-		isActive = true;
 		base.gameObject.SetActive(value: true);
 		ShowTileText(show: true, useMapName);
 		CustomMapsScreenTouchPoint.pressTime = Time.time;
@@ -96,9 +106,9 @@ public class CustomMapsModTile : CustomMapsScreenTouchPoint
 
 	public void DeactivateTile()
 	{
-		isActive = false;
 		base.gameObject.SetActive(value: false);
 		highlight.SetActive(value: false);
+		SetGeodesIconVisible(visible: false);
 		ShowTileText(show: false, useMapName: false);
 		ResetLogo();
 	}
@@ -120,10 +130,12 @@ public class CustomMapsModTile : CustomMapsScreenTouchPoint
 		currentMod = mod;
 		if (IsCurrentModHidden())
 		{
+			SetGeodesIconVisible(visible: false);
 			mapNameText.text = "HIDDEN MAP";
 			ratingsText.text = "0%";
 			return;
 		}
+		SetGeodesIconVisible(ModIOManager.IsGeodesMap(currentMod));
 		mapNameText.text = currentMod.Name;
 		long num = currentMod.Stats.RatingsNegative + currentMod.Stats.RatingsPositive;
 		string text;

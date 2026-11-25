@@ -78,7 +78,8 @@ public class VODPlayer : MonoBehaviour, IGorillaSliceableSimple
 			MM,
 			GCORP,
 			EVENT,
-			FEATURED
+			FEATURED,
+			MOTD
 		}
 
 		public string name;
@@ -286,6 +287,10 @@ public class VODPlayer : MonoBehaviour, IGorillaSliceableSimple
 		{
 			await Task.Yield();
 		}
+		if (schedule.hourly == null)
+		{
+			schedule.hourly = Array.Empty<VODHourlyStream>();
+		}
 		if (schedule.hourly.Length == 0)
 		{
 			state = State.CRASHED;
@@ -299,7 +304,18 @@ public class VODPlayer : MonoBehaviour, IGorillaSliceableSimple
 				targets[i].ShowStatic(on: true);
 			}
 		}
-		state = State.IDLE;
+		else
+		{
+			state = State.IDLE;
+			for (int j = 0; j < targets.Count; j++)
+			{
+				targets[j].SetNext(GetNextStream(targets[j].Channel));
+			}
+			if (targets.Count > 0)
+			{
+				PlayPreviouStream();
+			}
+		}
 	}
 
 	private Material getStandby(VODTarget o)
@@ -315,6 +331,17 @@ public class VODPlayer : MonoBehaviour, IGorillaSliceableSimple
 	{
 		if (targets.Contains(o))
 		{
+			return;
+		}
+		if (state == State.CRASHED)
+		{
+			o.ShowStatic(on: true);
+			return;
+		}
+		if (state == State.INITIALIZING)
+		{
+			targets.Add(o);
+			o.Renderer.material = getStandby(o);
 			return;
 		}
 		VODStream.VODStreamChannel[] priorityChannelArray = getPriorityChannelArray();

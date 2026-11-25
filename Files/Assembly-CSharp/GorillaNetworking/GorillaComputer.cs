@@ -10,6 +10,7 @@ using GorillaGameModes;
 using GorillaNetworking.ScheduledEvents;
 using GorillaTag.Audio;
 using GorillaTagScripts;
+using GorillaTagScripts.Subscription;
 using GorillaTagScripts.VirtualStumpCustomMaps;
 using KID.Model;
 using Photon.Pun;
@@ -51,7 +52,6 @@ public class GorillaComputer : MonoBehaviour, IGorillaSliceableSimple
 		Redemption,
 		Language,
 		Snake,
-		None,
 		Messages
 	}
 
@@ -134,6 +134,17 @@ public class GorillaComputer : MonoBehaviour, IGorillaSliceableSimple
 			}
 			return State.ToString().ToUpper();
 		}
+	}
+
+	private enum MailCheckoutState
+	{
+		None,
+		SteamWarning,
+		InProgress,
+		Done,
+		AlreadySubscribed,
+		Busy,
+		Unavailable
 	}
 
 	private enum SnakeGameState
@@ -731,8 +742,6 @@ public class GorillaComputer : MonoBehaviour, IGorillaSliceableSimple
 
 	private List<string> topVstumpMaps = new List<string>();
 
-	private int mailIndex;
-
 	private float lastCheckedWifi;
 
 	private float checkIfDisconnectedSeconds = 10f;
@@ -1011,6 +1020,82 @@ public class GorillaComputer : MonoBehaviour, IGorillaSliceableSimple
 	private static readonly Regex numberedEntry = new Regex("(?<![\\w])(\\d+)\\s?[:)]", RegexOptions.Compiled);
 
 	private static readonly Dictionary<string, string> coloredSentencesCache = new Dictionary<string, string>();
+
+	private const string MAIL_UNAVAILABLE_TITLE_KEY = "MAIL_UNAVAILABLE_TITLE";
+
+	private const string MAIL_UNAVAILABLE_KEY = "MAIL_UNAVAILABLE";
+
+	private const string MAIL_MESSAGE_NUMBER_KEY = "MAIL_MESSAGE_NUMBER";
+
+	private const string MAIL_PAGE_NUMBER_KEY = "MAIL_PAGE_NUMBER";
+
+	private const string MAIL_SENT_KEY = "MAIL_SENT";
+
+	private const string MAIL_SUBJECT_KEY = "MAIL_SUBJECT";
+
+	private const string MAIL_END_KEY = "MAIL_END";
+
+	private const string MAIL_NEXT_HINT_KEY = "MAIL_NEXT_HINT";
+
+	private const string MAIL_PAGE_HINT_KEY = "MAIL_PAGE_HINT";
+
+	private const string MAIL_EXIT_HINT_KEY = "MAIL_EXIT_HINT";
+
+	private const string MAIL_CHECKOUT_IN_PROGRESS_KEY = "MAIL_CHECKOUT_IN_PROGRESS";
+
+	private const string MAIL_CHECKOUT_SUCCESS_KEY = "MAIL_CHECKOUT_SUCCESS";
+
+	private const string MAIL_CHECKOUT_CANCEL_KEY = "MAIL_CHECKOUT_CANCEL";
+
+	private const string MAIL_CHECKOUT_FAIL_KEY = "MAIL_CHECKOUT_FAIL";
+
+	private const string MAIL_CHECKOUT_ALREADY_SUBSCRIBED_KEY = "MAIL_CHECKOUT_ALREADY_SUBSCRIBED";
+
+	private const string MAIL_CHECKOUT_BUSY_KEY = "MAIL_CHECKOUT_BUSY";
+
+	private const string MAIL_CHECKOUT_UNAVAILABLE_KEY = "MAIL_CHECKOUT_UNAVAILABLE";
+
+	private const string MAIL_STEAM_WARNING_TITLE_KEY = "MAIL_STEAM_WARNING_TITLE";
+
+	private const string MAIL_STEAM_WARNING_KEY = "MAIL_STEAM_WARNING";
+
+	private const string MAIL_CONTINUE_HINT_KEY = "MAIL_CONTINUE_HINT";
+
+	private const string MessagesScreenContext = "Messages Screen";
+
+	private const string MailHeader = "BANAN@MAIL =";
+
+	private static readonly string[][] mailHintKeyPhrases = new string[4][]
+	{
+		new string[1] { "BANANA" },
+		new string[1] { "UP/DOWN" },
+		new string[1] { "DELETE" },
+		new string[1] { "OPTION 1" }
+	};
+
+	private static readonly string[] MailEndBanana = new string[8] { "                  *", "                   #*", "                   # #", "                   #  *", "                  #  #", "                 *  #", "                # #", "                #*" };
+
+	private int mailIndex;
+
+	private int mailPage;
+
+	private int mailPageCount = 1;
+
+	private MailCheckoutState mailCheckoutState;
+
+	private FanClubCheckout.Result mailCheckoutResult;
+
+	private bool mailCheckoutResultSeen;
+
+	private readonly List<string> mailContentLines = new List<string>();
+
+	private readonly List<string> mailHintLines = new List<string>();
+
+	private readonly StringBuilder mailScreen = new StringBuilder();
+
+	private const char MailKeepTogetherSpace = '\u001f';
+
+	private static readonly string[] mailSinglePhrase = new string[1];
 
 	private const bool AllowRoomInRankedOnBeta = false;
 
@@ -1370,6 +1455,8 @@ public class GorillaComputer : MonoBehaviour, IGorillaSliceableSimple
 		}
 	}
 
+	private static bool ShowsMailSteamWarning => true;
+
 	private bool IsRoomLimitedInRanked => limitOnlineScreens;
 
 	private int SnakeDifficulty
@@ -1665,6 +1752,7 @@ public class GorillaComputer : MonoBehaviour, IGorillaSliceableSimple
 		KIDManager.RegisterSessionUpdatedCallback_VoiceChat(SetVoiceChatBySafety);
 		KIDManager.RegisterSessionUpdatedCallback_CustomUsernames(OnKIDSessionUpdated_CustomNicknames);
 		GorillaSlicerSimpleManager.RegisterSliceable(this, GorillaSlicerSimpleManager.UpdateStep.Update);
+		BananaMail.BananaMailStatusChange += OnBananaMailStatusChange;
 	}
 
 	public void OnDisable()
@@ -1673,6 +1761,7 @@ public class GorillaComputer : MonoBehaviour, IGorillaSliceableSimple
 		KIDManager.UnregisterSessionUpdatedCallback_VoiceChat(SetVoiceChatBySafety);
 		KIDManager.UnregisterSessionUpdatedCallback_CustomUsernames(OnKIDSessionUpdated_CustomNicknames);
 		GorillaSlicerSimpleManager.UnregisterSliceable(this, GorillaSlicerSimpleManager.UpdateStep.Update);
+		BananaMail.BananaMailStatusChange -= OnBananaMailStatusChange;
 	}
 
 	protected void OnDestroy()
@@ -1938,22 +2027,15 @@ public class GorillaComputer : MonoBehaviour, IGorillaSliceableSimple
 			return;
 		}
 		lastKeyPressTime = Time.time;
-		if (buttonPressed == GorillaKeyboardBindings.none)
+		nameCheckRateLimited = false;
+		if ((buttonPressed == GorillaKeyboardBindings.none || buttonPressed == GorillaKeyboardBindings.messages) && currentState != ComputerState.Snake)
 		{
-			SwitchState(ComputerState.None);
+			ProcessMessagesKey();
 			return;
 		}
-		nameCheckRateLimited = false;
-		if (buttonPressed == GorillaKeyboardBindings.messages)
+		if (currentState == ComputerState.Messages)
 		{
-			if (currentState != ComputerState.Messages)
-			{
-				mailIndex = 0;
-				SwitchState(ComputerState.Messages);
-			}
-			(int, string) tuple = BananaMail.DisplayMessage(mailIndex);
-			(mailIndex, _) = tuple;
-			screenText.Set(tuple.Item2);
+			ProcessMessagesState(buttonPressed);
 			UpdateScreen();
 			return;
 		}
@@ -2040,9 +2122,6 @@ public class GorillaComputer : MonoBehaviour, IGorillaSliceableSimple
 				break;
 			case ComputerState.Redemption:
 				ProcessRedemptionState(buttonPressed);
-				break;
-			case ComputerState.Messages:
-				ProcessStartupState(buttonPressed);
 				break;
 			}
 		}
@@ -2228,6 +2307,9 @@ public class GorillaComputer : MonoBehaviour, IGorillaSliceableSimple
 				break;
 			case ComputerState.Snake:
 				SnakeScreen();
+				break;
+			case ComputerState.Messages:
+				MessagesScreen();
 				break;
 			}
 		}
@@ -3023,14 +3105,7 @@ public class GorillaComputer : MonoBehaviour, IGorillaSliceableSimple
 
 	public GorillaNetworkJoinTrigger GetJoinTriggerFromFullGameModeString(string gameModeString)
 	{
-		foreach (KeyValuePair<string, GorillaNetworkJoinTrigger> item in primaryTriggersByZone)
-		{
-			if (gameModeString.StartsWith(item.Key))
-			{
-				return item.Value;
-			}
-		}
-		return null;
+		return GetJoinTriggerForZone(GameModeString.ZoneFromPropertyString(gameModeString));
 	}
 
 	public void OnGroupJoinButtonPress(int mapJoinIndex, GorillaFriendCollider chosenFriendJoinCollider)
@@ -3155,7 +3230,7 @@ public class GorillaComputer : MonoBehaviour, IGorillaSliceableSimple
 		{
 			return null;
 		}
-		if ((uint)(binding - 10) <= 6u || (uint)(binding - 43) <= 1u)
+		if ((uint)(binding - 10) <= 6u || (uint)(binding - 43) <= 2u)
 		{
 			return FunctionKeyColor;
 		}
@@ -3401,12 +3476,12 @@ public class GorillaComputer : MonoBehaviour, IGorillaSliceableSimple
 		}
 		foreach (string text2 in phrases)
 		{
-			int num = text.IndexOf(text2, StringComparison.Ordinal);
+			int num = text.IndexOf(text2, StringComparison.OrdinalIgnoreCase);
 			if (num >= 0)
 			{
 				StringBuilder stringBuilder = new StringBuilder();
 				stringBuilder.Append(text, 0, num);
-				AppendColored(stringBuilder, text2, OptionTextHighlightColor);
+				AppendColored(stringBuilder, text.Substring(num, text2.Length), OptionTextHighlightColor);
 				stringBuilder.Append(text, num + text2.Length, text.Length - num - text2.Length);
 				return stringBuilder.ToString();
 			}
@@ -3475,6 +3550,349 @@ public class GorillaComputer : MonoBehaviour, IGorillaSliceableSimple
 			}
 		}
 		return list;
+	}
+
+	private void ProcessMessagesKey()
+	{
+		if (currentState == ComputerState.Messages && mailCheckoutState == MailCheckoutState.InProgress)
+		{
+			return;
+		}
+		if (currentState != ComputerState.Messages)
+		{
+			if (mailCheckoutState != MailCheckoutState.InProgress && (mailCheckoutState != MailCheckoutState.Done || mailCheckoutResultSeen))
+			{
+				mailCheckoutState = MailCheckoutState.None;
+				mailIndex = 0;
+			}
+			SwitchState(ComputerState.Messages);
+		}
+		else
+		{
+			mailCheckoutState = MailCheckoutState.None;
+			if (BananaMail.Status == BananaMail.BananaMailStatus.ready)
+			{
+				mailIndex = (mailIndex + 1) % (BananaMail.Messages.Length + 1);
+			}
+		}
+		mailPage = 0;
+		UpdateScreen();
+	}
+
+	private void ProcessMessagesState(GorillaKeyboardBindings buttonPressed)
+	{
+		switch (buttonPressed)
+		{
+		case GorillaKeyboardBindings.option1:
+			TryStartMailCheckout();
+			break;
+		case GorillaKeyboardBindings.up:
+			if (mailPage > 0)
+			{
+				mailPage--;
+			}
+			break;
+		case GorillaKeyboardBindings.down:
+			if (mailPage < mailPageCount - 1)
+			{
+				mailPage++;
+			}
+			break;
+		case GorillaKeyboardBindings.delete:
+			ProcessStartupState(buttonPressed);
+			break;
+		case GorillaKeyboardBindings.enter:
+			break;
+		}
+	}
+
+	private void TryStartMailCheckout()
+	{
+		if (mailCheckoutState == MailCheckoutState.None)
+		{
+			if (BananaMail.Status != BananaMail.BananaMailStatus.ready || mailIndex >= BananaMail.Messages.Length || !BananaMail.Messages[mailIndex].OffersFanClubSignUp || ShowMailCheckoutBlocked())
+			{
+				return;
+			}
+			if (ShowsMailSteamWarning)
+			{
+				mailCheckoutState = MailCheckoutState.SteamWarning;
+				mailPage = 0;
+				return;
+			}
+		}
+		else if (mailCheckoutState != MailCheckoutState.SteamWarning)
+		{
+			return;
+		}
+		if (!ShowMailCheckoutBlocked())
+		{
+			mailCheckoutState = MailCheckoutState.InProgress;
+			mailCheckoutResultSeen = false;
+			if (!FanClubCheckout.Start(SubscriptionManager.SubscriptionTerm.MONTHLY, OnMailCheckoutComplete))
+			{
+				mailCheckoutState = (FanClubCheckout.InProgress ? MailCheckoutState.Busy : MailCheckoutState.Unavailable);
+			}
+		}
+	}
+
+	private bool ShowMailCheckoutBlocked()
+	{
+		if (SubscriptionManager.IsLocalSubscribed())
+		{
+			mailCheckoutState = MailCheckoutState.AlreadySubscribed;
+		}
+		else if (FanClubCheckout.InProgress)
+		{
+			mailCheckoutState = MailCheckoutState.Busy;
+		}
+		else
+		{
+			if (FanClubCheckout.CanStart)
+			{
+				return false;
+			}
+			mailCheckoutState = MailCheckoutState.Unavailable;
+		}
+		mailPage = 0;
+		return true;
+	}
+
+	private void OnMailCheckoutComplete(FanClubCheckout.Result result)
+	{
+		if (mailCheckoutState == MailCheckoutState.InProgress)
+		{
+			mailCheckoutState = MailCheckoutState.Done;
+			mailCheckoutResult = result;
+			mailCheckoutResultSeen = false;
+			if (currentState == ComputerState.Messages)
+			{
+				UpdateScreen();
+			}
+		}
+	}
+
+	private void OnBananaMailStatusChange()
+	{
+		if (currentState == ComputerState.Messages)
+		{
+			UpdateScreen();
+		}
+	}
+
+	private void MessagesScreen()
+	{
+		string localisedText = GetLocalisedText("MAIL_EXIT_HINT", "DELETE: EXIT", "Messages Screen");
+		mailContentLines.Clear();
+		if (BananaMail.Status != BananaMail.BananaMailStatus.ready)
+		{
+			mailContentLines.Add(GetLocalisedText("MAIL_UNAVAILABLE_TITLE", "NO BANANA", "Messages Screen"));
+			mailContentLines.Add(string.Empty);
+			WrapMailText(GetLocalisedText("MAIL_UNAVAILABLE", "TRY AGAIN LATER.", "Messages Screen"), mailContentLines);
+			DrawMailScreen("BANAN@MAIL =", localisedText, localisedText);
+			return;
+		}
+		BananaMail.BananaMailMessage[] messages = BananaMail.Messages;
+		string localisedText2 = GetLocalisedText("MAIL_NEXT_HINT", "PRESS BANANA FOR THE NEXT MESSAGE", "Messages Screen");
+		if (mailCheckoutState != MailCheckoutState.None)
+		{
+			MailCheckoutScreen(localisedText2, localisedText);
+			return;
+		}
+		if (mailIndex >= messages.Length)
+		{
+			mailContentLines.Add(GetLocalisedText("MAIL_END", "HAVE A BANANA!", "Messages Screen"));
+			mailContentLines.Add(string.Empty);
+			mailContentLines.AddRange(MailEndBanana);
+			string text = GetLocalisedText("MAIL_UNAVAILABLE_TITLE", "NO BANANA", "Messages Screen") + "\n" + localisedText;
+			DrawMailScreen("BANAN@MAIL =", text, text, highlightFirstHintLine: false);
+			return;
+		}
+		BananaMail.BananaMailMessage bananaMailMessage = messages[mailIndex];
+		BananaMail.MarkMessageRead(bananaMailMessage.GetId());
+		string text2 = ((bananaMailMessage.SubjectKey != null) ? GetLocalisedText(bananaMailMessage.SubjectKey, bananaMailMessage.Subject, "Messages Screen") : bananaMailMessage.Subject);
+		string body = ((bananaMailMessage.BodyKey != null) ? GetLocalisedText(bananaMailMessage.BodyKey, bananaMailMessage.Body, "Messages Screen") : bananaMailMessage.Body);
+		WrapMailText(GetLocalisedText("MAIL_SENT", "SENT:", "Messages Screen") + " " + bananaMailMessage.Sent.ToString("M/d/yyyy", CultureInfo.InvariantCulture), mailContentLines);
+		WrapMailText(GetLocalisedText("MAIL_SUBJECT", "SUBJ:", "Messages Screen") + " " + text2, mailContentLines);
+		mailContentLines.Add(string.Empty);
+		AddMailBody(body, bananaMailMessage.HighlightPhrases);
+		string header = "BANAN@MAIL = " + GetLocalisedText("MAIL_MESSAGE_NUMBER", "MSG", "Messages Screen") + $" {mailIndex + 1}/{messages.Length}";
+		string localisedText3 = GetLocalisedText("MAIL_PAGE_HINT", "UP/DOWN: PAGE", "Messages Screen");
+		DrawMailScreen(header, localisedText2 + "\n" + localisedText3 + "  " + localisedText, localisedText2 + "\n" + localisedText);
+	}
+
+	private void MailCheckoutScreen(string nextHint, string exitHint)
+	{
+		string text = nextHint + "\n" + exitHint;
+		if (mailCheckoutState == MailCheckoutState.SteamWarning)
+		{
+			mailContentLines.Add(GetLocalisedText("MAIL_STEAM_WARNING_TITLE", "STEAM-SPECIFIC DETAILS:", "Messages Screen"));
+			mailContentLines.Add(string.Empty);
+			WrapMailText(GetLocalisedText("MAIL_STEAM_WARNING", "-YOU NEED A CREDIT OR DEBIT CARD ON YOUR ACCOUNT (EVEN IF YOU USE STEAM WALLET).\n-UPDATE STEAMVR, NO MODS, & STEAM OVERLAY IS TURNED ON.\n-PLEASE USE PCVR STEAMVR (HORIZON LINK OR WIRED) TO BUY. NOT STEAMLINK ON META STORE!\n-NOT WORKING? CONTACT STEAM FOR PAYMENT SUPPORT.", "Messages Screen"), mailContentLines);
+			string localisedText = GetLocalisedText("MAIL_CONTINUE_HINT", "OPTION 1: CONTINUE", "Messages Screen");
+			string localisedText2 = GetLocalisedText("MAIL_PAGE_HINT", "UP/DOWN: PAGE", "Messages Screen");
+			DrawMailScreen("BANAN@MAIL =", nextHint + "\n" + localisedText + "  " + localisedText2 + "  " + exitHint, nextHint + "\n" + localisedText + "  " + exitHint);
+		}
+		else
+		{
+			string text2;
+			if (mailCheckoutState != MailCheckoutState.InProgress)
+			{
+				text2 = ((mailCheckoutState == MailCheckoutState.AlreadySubscribed) ? GetLocalisedText("MAIL_CHECKOUT_ALREADY_SUBSCRIBED", "YOU'RE ALREADY IN THE FAN CLUB! THANKS FOR BEING A VERY IMPORTANT MONKE (V.I.M.)!", "Messages Screen") : ((mailCheckoutState == MailCheckoutState.Busy) ? GetLocalisedText("MAIL_CHECKOUT_BUSY", "ANOTHER PURCHASE IS ALREADY IN PROGRESS. FINISH IT, THEN TRY AGAIN.", "Messages Screen") : ((mailCheckoutState == MailCheckoutState.Unavailable) ? GetLocalisedText("MAIL_CHECKOUT_UNAVAILABLE", "THE FAN CLUB ISN'T AVAILABLE ON THIS PLATFORM. SORRY!", "Messages Screen") : ((mailCheckoutResult == FanClubCheckout.Result.Success) ? GetLocalisedText("MAIL_CHECKOUT_SUCCESS", "SUBSCRIPTION SUCCESSFUL! WELCOME TO THE FAN CLUB, YOU ARE NOW A VERY IMPORTANT MONKE (V.I.M.)!", "Messages Screen") : ((mailCheckoutResult != FanClubCheckout.Result.Cancel) ? GetLocalisedText("MAIL_CHECKOUT_FAIL", "PURCHASE FAILED! WE'RE NOT SURE WHAT HAPPENED, BUT PLEASE CHECK YOUR INFORMATION, OR TRY AGAIN LATER. IF IT LOOKED LIKE THE PURCHASE SHOULD HAVE SUCCEEDED, TRY RESTARTING THE GAME.", "Messages Screen") : GetLocalisedText("MAIL_CHECKOUT_CANCEL", "PURCHASE CANCELED! WE'LL BE HERE IF YOU CHANGE YOUR MIND!", "Messages Screen"))))));
+			}
+			else
+			{
+				text2 = GetLocalisedText("MAIL_CHECKOUT_IN_PROGRESS", "OPENING THE CHECKOUT...", "Messages Screen");
+				text = exitHint;
+			}
+			if (mailCheckoutState == MailCheckoutState.Done)
+			{
+				mailCheckoutResultSeen = true;
+			}
+			WrapMailText(text2, mailContentLines);
+			DrawMailScreen("BANAN@MAIL =", text, text);
+		}
+	}
+
+	private void DrawMailScreen(string header, string hintWithPages, string hintOnePage, bool highlightFirstHintLine = true)
+	{
+		int mailContentRows = GetMailContentRows(hintWithPages);
+		mailPageCount = Mathf.Max(1, (mailContentLines.Count + mailContentRows - 1) / mailContentRows);
+		if (mailPageCount == 1)
+		{
+			mailContentRows = GetMailContentRows(hintOnePage);
+		}
+		mailPage = Mathf.Clamp(mailPage, 0, mailPageCount - 1);
+		string text = header;
+		if (mailPageCount > 1)
+		{
+			string text2 = GetLocalisedText("MAIL_PAGE_NUMBER", "PAGE", "Messages Screen") + $" {mailPage + 1}/{mailPageCount}";
+			text = text + new string(' ', Mathf.Max(1, 44 - header.Length - text2.Length)) + text2;
+		}
+		mailScreen.Clear();
+		AppendColored(mailScreen, text, OptionTextHighlightColor);
+		int num = mailPage * mailContentRows;
+		for (int i = 0; i < mailContentRows; i++)
+		{
+			mailScreen.Append('\n');
+			int num2 = num + i;
+			if (num2 < mailContentLines.Count)
+			{
+				mailScreen.Append(mailContentLines[num2]);
+			}
+		}
+		mailScreen.Append('\n');
+		for (int j = 0; j < mailHintLines.Count; j++)
+		{
+			mailScreen.Append('\n');
+			mailScreen.Append((j == 0 && !highlightFirstHintLine) ? mailHintLines[j] : HighlightMailHintKeys(mailHintLines[j]));
+		}
+		screenText.Set(mailScreen.ToString());
+	}
+
+	private void AddMailBody(string body, string[] highlightPhrases)
+	{
+		if (highlightPhrases == null || highlightPhrases.Length == 0)
+		{
+			WrapMailText(body, mailContentLines);
+			return;
+		}
+		string[] array = highlightPhrases;
+		foreach (string text in array)
+		{
+			if (!string.IsNullOrEmpty(text))
+			{
+				body = body.Replace(text, text.ToUpperInvariant().Replace(' ', '\u001f'), StringComparison.OrdinalIgnoreCase);
+			}
+		}
+		int count = mailContentLines.Count;
+		WrapMailText(body, mailContentLines);
+		for (int j = count; j < mailContentLines.Count; j++)
+		{
+			string text2 = mailContentLines[j].Replace('\u001f', ' ');
+			array = highlightPhrases;
+			foreach (string text3 in array)
+			{
+				mailSinglePhrase[0] = text3;
+				text2 = HighlightPhrase(text2, mailSinglePhrase);
+			}
+			mailContentLines[j] = text2;
+		}
+	}
+
+	private static string HighlightMailHintKeys(string hintLine)
+	{
+		string[][] array = mailHintKeyPhrases;
+		foreach (string[] phrases in array)
+		{
+			hintLine = HighlightPhrase(hintLine, phrases);
+		}
+		return hintLine;
+	}
+
+	private int GetMailContentRows(string hint)
+	{
+		mailHintLines.Clear();
+		WrapMailText(hint, mailHintLines);
+		return Mathf.Max(1, 13 - mailHintLines.Count);
+	}
+
+	private static void WrapMailText(string text, List<string> lines)
+	{
+		StringBuilder stringBuilder = new StringBuilder(44);
+		string[] array = text.Replace("\r", string.Empty).Split('\n');
+		foreach (string text2 in array)
+		{
+			int j;
+			for (j = 0; j < text2.Length && text2[j] == ' '; j++)
+			{
+			}
+			stringBuilder.Clear();
+			stringBuilder.Append(' ', Mathf.Min(j, 22));
+			bool flag = false;
+			string[] array2 = text2.Substring(j).Split(' ');
+			foreach (string text3 in array2)
+			{
+				if (text3.Length == 0)
+				{
+					if (flag && stringBuilder.Length < 44)
+					{
+						stringBuilder.Append(' ');
+					}
+					continue;
+				}
+				string text4 = text3;
+				while (text4.Length > 0)
+				{
+					int num = (flag ? 1 : 0);
+					if (stringBuilder.Length + num + text4.Length <= 44)
+					{
+						if (flag)
+						{
+							stringBuilder.Append(' ');
+						}
+						stringBuilder.Append(text4);
+						flag = true;
+						text4 = string.Empty;
+					}
+					else if (flag)
+					{
+						lines.Add(stringBuilder.ToString());
+						stringBuilder.Clear();
+						flag = false;
+					}
+					else
+					{
+						int num2 = Mathf.Max(1, 44 - stringBuilder.Length);
+						stringBuilder.Append(text4, 0, num2);
+						text4 = text4.Substring(num2);
+						lines.Add(stringBuilder.ToString());
+						stringBuilder.Clear();
+					}
+				}
+			}
+			lines.Add(stringBuilder.ToString());
+		}
 	}
 
 	private void InitializeMicState()

@@ -12,9 +12,6 @@ public class RigidbodyHighlighter : MonoBehaviour
 	public static RigidbodyHighlighter Instance;
 
 	[SerializeField]
-	private float _inGameDuration = 10f;
-
-	[SerializeField]
 	private LineRenderer _lineRenderer;
 
 	[SerializeField]

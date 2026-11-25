@@ -124,7 +124,8 @@ public class FireworksController : MonoBehaviour
 			if (fw.doTrail)
 			{
 				ParticleSystem trail = fw.trail;
-				trail.startColor = fw.colorOrigin;
+				ParticleSystem.MainModule main = trail.main;
+				main.startColor = fw.colorOrigin;
 				ParticleSystem.ColorOverLifetimeModule colorOverLifetime = trail.subEmitters.GetSubEmitterSystem(0).colorOverLifetime;
 				colorOverLifetime.color = new ParticleSystem.MinMaxGradient(fw.colorOrigin, fw.colorTarget);
 				trail.Stop();

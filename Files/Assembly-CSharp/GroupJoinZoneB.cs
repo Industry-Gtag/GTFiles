@@ -23,5 +23,7 @@ public enum GroupJoinZoneB
 	SilverbackStudios = 0x20000,
 	SilverbackEntrance = 0x40000,
 	MonkeBlocksEntrance = 0x80000,
-	EventZone = 0x100000
+	EventZone = 0x100000,
+	MonkeBlocksFeaturedA = 0x200000,
+	MonkeBlocksFeaturedB = 0x400000
 }

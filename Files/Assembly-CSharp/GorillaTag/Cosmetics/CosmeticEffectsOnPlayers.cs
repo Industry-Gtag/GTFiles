@@ -154,7 +154,6 @@ public class CosmeticEffectsOnPlayers : MonoBehaviour, ISpawnable
 	public enum EFFECTTYPE
 	{
 		Skin = 0,
-		[Obsolete("FPV has been removed, do not use, use Stick Object To Player instead")]
 		TagWithKnockback = 2,
 		InstantKnockback = 3,
 		VoiceOverride = 4,

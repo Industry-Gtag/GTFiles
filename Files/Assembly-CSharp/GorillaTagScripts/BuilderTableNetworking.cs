@@ -1257,6 +1257,11 @@ public class BuilderTableNetworking : MonoBehaviourPunCallbacks, ITickSystemTick
 		{
 			return;
 		}
+		if (table.IsFeaturedTable())
+		{
+			GTDev.LogWarning("SharedBlocks LoadSharedBlocksMapRPC refused on featured table");
+			return;
+		}
 		if (!table.linkedTerminal.ValidateLoadMapRequest(mapID, info.Sender.ActorNumber))
 		{
 			GTDev.LogWarning("SharedBlocks ValidateLoadMapRequest fail");

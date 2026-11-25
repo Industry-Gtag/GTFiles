@@ -30,8 +30,6 @@ public class LocalisationManager : MonoBehaviour
 
 	private bool _cachedHasInitialised;
 
-	private static bool _hasInitialised = false;
-
 	private const string LANGUAGE_SET_PLAYER_PREF = "has-set-language";
 
 	private const string LOC_SYSTEM_PLAYER_PREF = "selected-locale";
@@ -107,7 +105,7 @@ public class LocalisationManager : MonoBehaviour
 		_requestCancellationSource = new CancellationTokenSource();
 	}
 
-	private async void Start()
+	private void Start()
 	{
 		TryUpdateLanguage(_initLocale, saveLanguage: false);
 		if (!LanguageSet)
@@ -133,7 +131,6 @@ public class LocalisationManager : MonoBehaviour
 	[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
 	private static void InitialiseLanguage()
 	{
-		_hasInitialised = false;
 		string text = PlayerPrefs.GetString(LanugageSetPlayerPrefKey, "");
 		Locale result = null;
 		if (!string.IsNullOrEmpty(text) && LanguageSet)
@@ -146,7 +143,6 @@ public class LocalisationManager : MonoBehaviour
 		}
 		MothershipClientApiUnity.SetLanguage(result.Identifier.Code);
 		_initLocale = result;
-		_hasInitialised = true;
 	}
 
 	private static void CacheLocTables()

@@ -798,8 +798,9 @@ public class TransferrableObject : HoldableObject, ISelfValidator, IRequestableO
 		}
 	}
 
-	protected new virtual void OnDestroy()
+	protected override void OnDestroy()
 	{
+		base.OnDestroy();
 		TransferrableObjectManager.Unregister(this);
 	}
 

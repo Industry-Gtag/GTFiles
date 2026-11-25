@@ -61,6 +61,8 @@ public class NetworkedWearable : MonoBehaviour, ISpawnable, ITickSystemTick
 	[SerializeField]
 	protected UnityEvent OnRightWearableStateFalse;
 
+	public bool IsStateOn => value;
+
 	public bool IsSpawned { get; set; }
 
 	public ECosmeticSelectSide CosmeticSelectedSide { get; set; }

@@ -46,7 +46,9 @@ public class VRRig : MonoBehaviour, IWrappedSerializable, IPreDisable, IUserCosm
 		Pants2,
 		Badge,
 		Fur,
-		Shirt
+		Shirt,
+		Arms_Left,
+		Arms_Right
 	}
 
 	public struct VelocityTime(Vector3 velocity, double velTime)
@@ -399,7 +401,7 @@ public class VRRig : MonoBehaviour, IWrappedSerializable, IPreDisable, IUserCosm
 
 	private PartyMemberStatus partyMemberStatus;
 
-	public static readonly GTBitOps.BitWriteInfo[] WearablePackedStatesBitWriteInfos = new GTBitOps.BitWriteInfo[9]
+	public static readonly GTBitOps.BitWriteInfo[] WearablePackedStatesBitWriteInfos = new GTBitOps.BitWriteInfo[11]
 	{
 		new GTBitOps.BitWriteInfo(0, 1),
 		new GTBitOps.BitWriteInfo(1, 2),
@@ -409,7 +411,9 @@ public class VRRig : MonoBehaviour, IWrappedSerializable, IPreDisable, IUserCosm
 		new GTBitOps.BitWriteInfo(9, 2),
 		new GTBitOps.BitWriteInfo(11, 1),
 		new GTBitOps.BitWriteInfo(12, 1),
-		new GTBitOps.BitWriteInfo(13, 1)
+		new GTBitOps.BitWriteInfo(13, 1),
+		new GTBitOps.BitWriteInfo(14, 1),
+		new GTBitOps.BitWriteInfo(15, 1)
 	};
 
 	public bool inTryOnRoom;
@@ -4361,6 +4365,21 @@ public class VRRig : MonoBehaviour, IWrappedSerializable, IPreDisable, IUserCosm
 		}
 		UpdateName(flag);
 		Debug.Log("[KID] On Session Update - Custom Names Permission changed - Has enabled customNames? [" + flag + "]");
+	}
+
+	public static VRRig FindCosmeticOwnerRig(Component component)
+	{
+		VRRig componentInParent = component.GetComponentInParent<VRRig>(includeInactive: true);
+		if (componentInParent != null)
+		{
+			return componentInParent;
+		}
+		PickupableCosmetic componentInParent2 = component.GetComponentInParent<PickupableCosmetic>(includeInactive: true);
+		if (!(componentInParent2 != null))
+		{
+			return null;
+		}
+		return componentInParent2.OwnerRig;
 	}
 
 	private IList<KeyValueStringPair> buildEntries()

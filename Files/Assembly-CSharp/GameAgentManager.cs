@@ -73,13 +73,15 @@ public class GameAgentManager : NetworkComponent, ITickSystemTick
 		nextAgentIndexThink = 0;
 	}
 
-	private new void OnEnable()
+	internal override void OnEnable()
 	{
+		base.OnEnable();
 		TickSystem<object>.AddCallbackTarget(this);
 	}
 
-	private new void OnDisable()
+	internal override void OnDisable()
 	{
+		base.OnDisable();
 		TickSystem<object>.RemoveCallbackTarget(this);
 	}
 
