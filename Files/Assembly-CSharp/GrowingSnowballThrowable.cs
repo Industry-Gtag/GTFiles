@@ -158,6 +158,9 @@ public class GrowingSnowballThrowable : SnowballThrowable
 	{
 		base.OnDestroy();
 		DestroyPhotonEvents();
+		VRRigCache.OnRigActivated -= VRRigActivated;
+		VRRigCache.OnRigDeactivated -= VRRigDeactivated;
+		NetworkSystem.Instance.OnMultiplayerStarted -= new Action(StartedMultiplayerSession);
 	}
 
 	private void VRRigActivated(RigContainer rigContainer)
